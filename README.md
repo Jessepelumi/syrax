@@ -1,2 +1,3 @@
-# syrax
-One stop shop for file uploads
+# Syrax
+
+Multi-Modal Storage Gateway and Ephemeral Transfer Platform
