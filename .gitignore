@@ -1,0 +1,7 @@
+# Misc OS
+.DS_Store
+*.pem
+
+# IDE
+.vscode/
+.idea/
