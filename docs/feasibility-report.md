@@ -1,6 +1,7 @@
 # Milestone 0 feasibility report
 
-**Status:** PostgreSQL gate passed; live Google Drive feasibility not yet proven.
+**Status:** PostgreSQL, OAuth, and destination-selection gates passed; provider-direct byte path
+awaits live browser testing.
 
 ## Implemented
 
@@ -17,17 +18,24 @@
 - Authenticated, no-store Picker configuration endpoint.
 - Folder Picker and server-side validation using immutable selected ID.
 - Transactional destination persistence and redacted audit event.
+- Live OAuth callback completed with the configured test account on 2026-08-08.
+- Google Picker selected and server verified the existing `TJWeddingGuestUpload` folder on
+  2026-08-08.
+- Admin-only one-file resumable-upload spike with direct browser `PUT`, safe failure reporting, and
+  server-side provider metadata verification.
+- Desktop in-app browser sent an 89,417-byte JPEG directly to Drive on 2026-08-08. Google accepted
+  the full file in the selected folder, but browser `fetch` returned an ambiguous network/CORS
+  failure instead of exposing the final provider response. Preflight independently returned HTTP
+  200 with the expected origin, method, and header allowances.
+- Completion now reconciles ambiguous browser results through opaque Drive app properties and
+  server-side metadata verification. Application server still never handles file bytes.
 - Unit tests for environment, OAuth state, token vault tamper failure, and destination policy.
 - Production dependency audit: zero known vulnerabilities on 2026-08-07. Four moderate
   development-only findings remain in Drizzle Kit's deprecated loader; see decision D-007.
 
 ## Not yet proven
 
-- OAuth callback against configured Google test account.
-- Picker access to existing `TJWeddingGuestUpload` folder.
-- Drive's effective create permission inside selected folder. Current check uses
-  `capabilities.canAddChildren`; Gate B still requires actual disposable upload.
-- Resumable-session creation and browser-to-Drive byte path.
+- Successful desktop UI completion through the new ambiguous-response reconciliation path.
 - Desktop Chrome, iOS Safari, and Android Chrome upload behavior.
 - Interrupted upload logs and CORS response behavior.
 
