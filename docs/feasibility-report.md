@@ -1,6 +1,6 @@
 # Milestone 0 feasibility report
 
-**Status:** Implementation ready for local integration; live Drive feasibility not yet proven.
+**Status:** PostgreSQL gate passed; live Google Drive feasibility not yet proven.
 
 ## Implemented
 
@@ -8,6 +8,8 @@
 - Validated environment boundary and redacted structured logger.
 - Node-runtime startup validation through Next.js instrumentation.
 - PostgreSQL schema/migration source and live health probe.
+- Initial migration applied to configured PostgreSQL on 2026-08-08. Expected four public tables
+  and one Drizzle migration record verified; `/api/health` returned HTTP 200 with database `ok`.
 - Server-side Google authorization-code flow with 256-bit state cookie.
 - Admin email and Google subject enforcement.
 - AES-256-GCM refresh-token encryption with unique nonce, AAD, and versioned payload.
@@ -21,7 +23,6 @@
 
 ## Not yet proven
 
-- Live database migration and `/api/health` against user-selected PostgreSQL.
 - OAuth callback against configured Google test account.
 - Picker access to existing `TJWeddingGuestUpload` folder.
 - Drive's effective create permission inside selected folder. Current check uses
