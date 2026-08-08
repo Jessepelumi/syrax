@@ -54,3 +54,12 @@
   Forced fix is a breaking downgrade and does not improve runtime exposure. Migration tooling must
   remain local-only and must not bind a network-accessible development server.
 - **Status:** Accepted temporarily. Recheck on every Drizzle Kit upgrade.
+
+## D-008: Environment loading for root tooling
+
+- **Decision:** Root tooling such as Drizzle Kit loads `.env*` files with Next.js `@next/env`
+  before calling validated accessors in `src/lib/env.ts`.
+- **Reason:** Next.js loads `.env.local` only inside its runtime. Drizzle config executes in a
+  standalone Node process and otherwise sees no `DATABASE_URL`, even while the app runs correctly.
+- **Status:** Accepted. `src/lib/env.ts` remains the only module that reads and validates
+  `process.env` directly.
