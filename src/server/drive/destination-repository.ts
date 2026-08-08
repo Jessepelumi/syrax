@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
 import { auditEvents, driveConnections, driveDestinations } from "@/db/schema";
@@ -68,6 +68,31 @@ export async function getDriveDestinationForAdmin(adminId: string) {
       eq(driveDestinations.driveConnectionId, driveConnections.id),
     )
     .where(eq(driveConnections.adminId, adminId))
+    .limit(1);
+
+  return destination;
+}
+
+export async function getActiveDriveDestinationForAdmin(adminId: string) {
+  const [destination] = await getDatabase()
+    .select({
+      id: driveDestinations.id,
+      displayName: driveDestinations.displayName,
+      driveConnectionId: driveDestinations.driveConnectionId,
+      providerFolderId: driveDestinations.providerFolderId,
+    })
+    .from(driveDestinations)
+    .innerJoin(
+      driveConnections,
+      eq(driveDestinations.driveConnectionId, driveConnections.id),
+    )
+    .where(
+      and(
+        eq(driveConnections.adminId, adminId),
+        eq(driveConnections.status, "ACTIVE"),
+        eq(driveDestinations.status, "ACTIVE"),
+      ),
+    )
     .limit(1);
 
   return destination;
