@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DriveUploadFeasibility } from "@/components/admin/drive-upload-feasibility";
 import { GoogleFolderPicker } from "@/components/admin/google-folder-picker";
 import { getEnvironment } from "@/lib/env";
 import { getAdminSession } from "@/server/auth/admin-session";
 import { getDriveDestinationForAdmin } from "@/server/drive/destination-repository";
+import { getFeasibilityUploadLimitBytes } from "@/server/drive/resumable-upload";
 
 export default async function DestinationPage() {
   const session = await getAdminSession();
@@ -33,17 +35,20 @@ export default async function DestinationPage() {
       </p>
 
       {destination ? (
-        <section className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-          <h2 className="font-semibold text-emerald-950">Verified destination</h2>
-          <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm text-emerald-900">
-            <dt>Status</dt>
-            <dd className="font-semibold">{destination.status}</dd>
-            <dt>Name</dt>
-            <dd className="font-semibold">{destination.displayName}</dd>
-            <dt>Verified</dt>
-            <dd>{destination.verifiedAt.toISOString()}</dd>
-          </dl>
-        </section>
+        <>
+          <section className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+            <h2 className="font-semibold text-emerald-950">Verified destination</h2>
+            <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm text-emerald-900">
+              <dt>Status</dt>
+              <dd className="font-semibold">{destination.status}</dd>
+              <dt>Name</dt>
+              <dd className="font-semibold">{destination.displayName}</dd>
+              <dt>Verified</dt>
+              <dd>{destination.verifiedAt.toISOString()}</dd>
+            </dl>
+          </section>
+          <DriveUploadFeasibility maxBytes={getFeasibilityUploadLimitBytes()} />
+        </>
       ) : null}
 
       <GoogleFolderPicker expectedName={expectedName} />
