@@ -63,3 +63,19 @@
   standalone Node process and otherwise sees no `DATABASE_URL`, even while the app runs correctly.
 - **Status:** Accepted. `src/lib/env.ts` remains the only module that reads and validates
   `process.env` directly.
+
+## D-009: Milestone 0 resumable-upload shape
+
+- **Decision:** Prove the provider-direct byte path with an authenticated admin-only, one-file,
+  single-request `PUT` to a Google Drive resumable-session URI. Return that bearer-like URI only in
+  a private, no-store response; never persist or log it. Verify the resulting provider file
+  server-side using opaque app properties, declared metadata, and selected parent folder. Cap this
+  destructive-to-Drive test at 25 MiB even when the eventual portal limit is larger. When the
+  browser cannot read the final provider response after a successful preflight, reconcile by the
+  opaque upload app property and selected parent; never proxy file bytes through the application.
+- **Reason:** Google documents single-request content transfer as a valid resumable upload. This
+  isolates CORS, browser, permission, and provider-acknowledgement risk before building the chunked
+  guest upload engine or durable upload resources.
+- **Status:** Implemented for feasibility testing. Desktop testing proved direct byte delivery but
+  exposed an ambiguous final browser response; reconciliation added 2026-08-08. Gate B still needs
+  a successful reconciled desktop rerun and mobile-browser tests.
