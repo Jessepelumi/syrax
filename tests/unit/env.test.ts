@@ -53,4 +53,14 @@ describe("parseEnvironment", () => {
       parseEnvironment({ ...validEnvironment, MAX_SUBMISSION_BYTES: "1024" }),
     ).toThrow();
   });
+
+  it("rejects byte limits that cannot be represented safely in JavaScript", () => {
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        MAX_FILE_SIZE_BYTES: (Number.MAX_SAFE_INTEGER + 1).toString(),
+        MAX_SUBMISSION_BYTES: (Number.MAX_SAFE_INTEGER + 1).toString(),
+      }),
+    ).toThrow();
+  });
 });
