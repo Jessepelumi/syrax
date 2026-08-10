@@ -1,0 +1,1 @@
+ALTER TABLE "portals" ADD COLUMN "encrypted_public_token" text;
