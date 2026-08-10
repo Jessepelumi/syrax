@@ -7,18 +7,18 @@ export default function Home() {
         Syrax Intake
       </p>
       <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-950 sm:text-6xl">
-        Wedding guest upload pilot
+        Receive files directly in your cloud storage
       </h1>
       <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-        Connect the host Google Drive destination, create a secure wedding link, and receive guest
-        files without storing photo bytes on the Syrax server.
+        Connect your preferred cloud folder destination, create a secure link, and receive
+        files all on the cloud.
       </p>
       <div className="mt-10">
         <Link
           className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-6 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-slate-950"
           href="/admin"
         >
-          Open host setup
+          Get started
         </Link>
       </div>
     </main>
