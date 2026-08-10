@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { getAdminSession } from "@/server/auth/admin-session";
 
 const errorMessages: Record<string, string> = {
   oauth_denied: "Google authorization was cancelled.",
@@ -13,6 +16,11 @@ export default async function AdminPage({
 }) {
   const { error } = await searchParams;
   const errorMessage = error ? errorMessages[error] : undefined;
+  const session = await getAdminSession();
+
+  if (session && !errorMessage) {
+    redirect("/admin/destination");
+  }
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16 sm:py-24">

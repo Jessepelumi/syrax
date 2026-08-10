@@ -10,8 +10,8 @@ export default function Home() {
         Wedding guest upload pilot
       </h1>
       <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-        Milestone 0 connects one approved host account and verifies the selected Google Drive
-        destination before guest uploads are enabled.
+        Connect the host Google Drive destination, create a secure wedding link, and receive guest
+        files without storing photo bytes on the Syrax server.
       </p>
       <div className="mt-10">
         <Link

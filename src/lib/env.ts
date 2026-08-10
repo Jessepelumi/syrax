@@ -8,7 +8,11 @@ const base64KeySchema = z.string().refine((value) => {
   return Buffer.from(value, "base64").byteLength === 32;
 }, "Must be a base64-encoded 32-byte key");
 
-const positiveInteger = z.coerce.number().int().positive();
+const positiveInteger = z.coerce
+  .number()
+  .int()
+  .positive()
+  .max(Number.MAX_SAFE_INTEGER);
 
 export const environmentSchema = z
   .object({
@@ -33,7 +37,7 @@ export const environmentSchema = z
     PILOT_DESTINATION_NAME: z.string().trim().min(1).max(255),
     DEFAULT_PORTAL_EXPIRY: z.iso.datetime({ offset: true }),
     MAX_FILE_SIZE_BYTES: positiveInteger,
-    MAX_FILES_PER_SUBMISSION: positiveInteger,
+    MAX_FILES_PER_SUBMISSION: positiveInteger.max(100),
     MAX_SUBMISSION_BYTES: positiveInteger,
     UPLOAD_CHUNK_SIZE_BYTES: positiveInteger.refine(
       (value) => value % (256 * 1024) === 0,

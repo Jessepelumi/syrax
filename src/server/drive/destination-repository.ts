@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
 import { auditEvents, driveConnections, driveDestinations } from "@/db/schema";
@@ -25,10 +25,12 @@ export async function saveDriveDestination(input: {
         status: "ACTIVE",
       })
       .onConflictDoUpdate({
-        target: driveDestinations.driveConnectionId,
+        target: [
+          driveDestinations.driveConnectionId,
+          driveDestinations.providerFolderId,
+        ],
         set: {
           displayName: input.displayName,
-          providerFolderId: input.providerFolderId,
           status: "ACTIVE",
           updatedAt: now,
           verifiedAt: now,
@@ -68,6 +70,7 @@ export async function getDriveDestinationForAdmin(adminId: string) {
       eq(driveDestinations.driveConnectionId, driveConnections.id),
     )
     .where(eq(driveConnections.adminId, adminId))
+    .orderBy(desc(driveDestinations.updatedAt))
     .limit(1);
 
   return destination;
@@ -93,6 +96,7 @@ export async function getActiveDriveDestinationForAdmin(adminId: string) {
         eq(driveDestinations.status, "ACTIVE"),
       ),
     )
+    .orderBy(desc(driveDestinations.updatedAt))
     .limit(1);
 
   return destination;
