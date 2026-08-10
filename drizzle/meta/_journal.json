@@ -22,6 +22,20 @@
       "when": 1786369805296,
       "tag": "0002_fancy_scorpion",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786375170176,
+      "tag": "0003_shallow_stone_men",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786380760504,
+      "tag": "0004_sudden_fenris",
+      "breakpoints": true
     }
   ]
 }
