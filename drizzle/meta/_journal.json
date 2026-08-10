@@ -8,6 +8,13 @@
       "when": 1786114940730,
       "tag": "0000_sad_malice",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786364713176,
+      "tag": "0001_goofy_doomsday",
+      "breakpoints": true
     }
   ]
 }
