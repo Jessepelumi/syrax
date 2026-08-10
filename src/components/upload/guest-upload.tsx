@@ -8,6 +8,7 @@ import {
   uploadFileToDrive,
   type BrowserUploadIdentity,
 } from "@/lib/upload-engine";
+import { getAggregateUploadProgress } from "@/lib/upload-progress";
 import {
   FileRow,
   type GuestFileRowModel,
@@ -302,6 +303,13 @@ export function GuestUpload(props: GuestUploadProps) {
     ["COMPLETED", "FAILED", "CANCELLED"].includes(item.status),
   ).length;
   const finished = Boolean(submissionId) && terminalCount === items.length;
+  const aggregateProgress = getAggregateUploadProgress(
+    items.map((item) => ({
+      confirmedBytes: item.confirmedBytes,
+      sizeBytes: item.file.size,
+      status: item.status,
+    })),
+  );
 
   return (
     <section className="mt-8" aria-labelledby="guest-upload-heading">
@@ -351,6 +359,27 @@ export function GuestUpload(props: GuestUploadProps) {
         <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
           {globalError}
         </p>
+      ) : null}
+
+      {items.length > 0 ? (
+        <section
+          aria-label="Overall upload progress"
+          aria-live="polite"
+          className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
+        >
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <p className="font-semibold text-emerald-950">Upload progress</p>
+            <p className="text-emerald-900">
+              {aggregateProgress.completedFiles}/{aggregateProgress.totalFiles} images uploaded
+            </p>
+          </div>
+          <progress
+            aria-label={`${aggregateProgress.completedFiles} of ${aggregateProgress.totalFiles} images uploaded`}
+            className="mt-3 h-3 w-full accent-emerald-700"
+            max={aggregateProgress.totalBytes}
+            value={aggregateProgress.confirmedBytes}
+          />
+        </section>
       ) : null}
 
       {items.length > 0 ? (
