@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { GuestUpload } from "@/components/upload/guest-upload";
+import { getEnvironment } from "@/lib/env";
 import { resolvePublicPortal } from "@/server/portals/portal-service";
 
 export default async function UploadPortalPage({
@@ -30,15 +32,7 @@ export default async function UploadPortalPage({
         {portal.name}
       </h1>
 
-      {active ? (
-        <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-          <h2 className="font-semibold text-emerald-950">Upload link active</h2>
-          <p className="mt-2 text-sm leading-6 text-emerald-900">
-            This capability is valid and ready for the multi-file upload interface. Do not
-            distribute it until the guest uploader slice is deployed.
-          </p>
-        </section>
-      ) : (
+      {!active ? (
         <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5" role="status">
           <h2 className="font-semibold text-amber-950">
             {portal.status === "EXPIRED"
@@ -49,7 +43,7 @@ export default async function UploadPortalPage({
           </h2>
           <p className="mt-2 text-sm leading-6 text-amber-900">Contact the wedding host for help.</p>
         </section>
-      )}
+      ) : null}
 
       <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm text-slate-600">
         <dt>Allowed</dt>
@@ -59,6 +53,17 @@ export default async function UploadPortalPage({
         <dt>Closes</dt>
         <dd>{portal.expiresAt.toLocaleString()}</dd>
       </dl>
+
+      {active ? (
+        <GuestUpload
+          allowedMimeTypes={portal.allowedMimeTypes}
+          concurrency={getEnvironment().UPLOAD_CLIENT_CONCURRENCY}
+          maxFileSizeBytes={portal.maxFileSizeBytes}
+          maxFilesPerSubmission={portal.maxFilesPerSubmission}
+          maxSubmissionBytes={portal.maxSubmissionBytes}
+          portalToken={portalToken}
+        />
+      ) : null}
     </main>
   );
 }
