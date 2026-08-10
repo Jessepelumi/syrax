@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { DriveUploadFeasibility } from "@/components/admin/drive-upload-feasibility";
 import { GoogleFolderPicker } from "@/components/admin/google-folder-picker";
 import { getEnvironment } from "@/lib/env";
 import { getAdminSession } from "@/server/auth/admin-session";
 import { getDriveDestinationForAdmin } from "@/server/drive/destination-repository";
-import { getFeasibilityUploadLimitBytes } from "@/server/drive/resumable-upload";
 
 export default async function DestinationPage() {
   const session = await getAdminSession();
@@ -47,7 +45,12 @@ export default async function DestinationPage() {
               <dd>{destination.verifiedAt.toISOString()}</dd>
             </dl>
           </section>
-          <DriveUploadFeasibility maxBytes={getFeasibilityUploadLimitBytes()} />
+          <Link
+            className="mt-6 inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-6 font-semibold text-white"
+            href="/admin/portal"
+          >
+            Manage guest portal
+          </Link>
         </>
       ) : null}
 
