@@ -18,8 +18,7 @@
 - Folder Picker and server-side validation using immutable selected ID.
 - Transactional destination persistence and redacted audit event.
 - Live OAuth callback completed with the configured test account on 2026-08-08.
-- Google Picker selected and server verified the existing `TJWeddingGuestUpload` folder on
-  2026-08-08.
+- Google Picker selected and server verified the configured test destination on 2026-08-08.
 - Admin-only one-file resumable-upload spike with direct browser `PUT`, safe failure reporting, and
   server-side provider metadata verification.
 - Desktop in-app browser sent an 89,417-byte JPEG directly to Drive on 2026-08-08. Google accepted

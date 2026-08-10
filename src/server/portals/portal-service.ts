@@ -1,15 +1,19 @@
 import "server-only";
 
+import { timingSafeEqual } from "node:crypto";
+
 import type { Portal } from "@/db/schema";
 import { getEnvironment } from "@/lib/env";
 import { PILOT_ALLOWED_MIME_TYPES } from "@/lib/mime";
 import { normalizeDisplayText } from "@/lib/text";
 import {
   createPortalRecordForAdmin,
+  deleteClosedPortalRecordForAdmin,
   expirePortalRecord,
   findPortalByPublicTokenHash,
   getPortalForAdmin,
   listPortalRecordsForAdmin,
+  type AdminPortalProviderRecord,
   type PortalRecord,
   type PortalProviderRecord,
   transitionPortalRecordForAdmin,
@@ -19,6 +23,7 @@ import {
   type PortalState,
   PortalStateTransitionError,
 } from "@/server/portals/portal-state";
+import { createPortalTokenVault } from "@/server/portals/portal-token-vault";
 import {
   generatePortalToken,
   hashPortalToken,
@@ -31,6 +36,7 @@ export type PortalServiceErrorCode =
   | "PORTAL_CLOSED"
   | "PORTAL_EXPIRED"
   | "PORTAL_INVALID"
+  | "PORTAL_NOT_CLOSED"
   | "PORTAL_NOT_FOUND"
   | "PORTAL_STATE_CONFLICT";
 
@@ -51,6 +57,10 @@ export interface PublicPortal {
   maxSubmissionBytes: number;
   name: string;
   status: PortalState;
+}
+
+export interface AdminPortal extends PublicPortal {
+  portalUrl?: string;
 }
 
 function isExpired(portal: Pick<Portal, "expiresAt" | "status">, now = new Date()): boolean {
@@ -84,6 +94,64 @@ async function normalizeExpiry(record: PortalProviderRecord): Promise<PublicPort
   return toPublicPortal(record, "EXPIRED");
 }
 
+function equalTokenHash(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left, "utf8");
+  const rightBuffer = Buffer.from(right, "utf8");
+
+  return (
+    leftBuffer.byteLength === rightBuffer.byteLength &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
+}
+
+function toAdminPortal(
+  record: AdminPortalProviderRecord,
+  status = record.status,
+): AdminPortal {
+  const portal: AdminPortal = toPublicPortal(record, status);
+
+  if (status !== "OPEN" || !record.encryptedPublicToken) {
+    return portal;
+  }
+
+  try {
+    const environment = getEnvironment();
+    const publicToken = createPortalTokenVault(
+      environment.TOKEN_ENCRYPTION_KEY,
+    ).decrypt(record.encryptedPublicToken, record.publicTokenHash);
+
+    if (
+      !isPortalTokenShape(publicToken) ||
+      !equalTokenHash(hashPortalToken(publicToken), record.publicTokenHash)
+    ) {
+      return portal;
+    }
+
+    portal.portalUrl = new URL(
+      `/upload/${encodeURIComponent(publicToken)}`,
+      environment.APP_BASE_URL,
+    ).toString();
+  } catch {
+    return portal;
+  }
+
+  return portal;
+}
+
+async function normalizeAdminExpiry(
+  record: AdminPortalProviderRecord,
+): Promise<AdminPortal> {
+  if (!isExpired(record)) {
+    return toAdminPortal(record);
+  }
+
+  if (record.status !== "EXPIRED") {
+    await expirePortalRecord(record.id);
+  }
+
+  return toAdminPortal(record, "EXPIRED");
+}
+
 export async function createPortalForAdmin(input: {
   adminId: string;
   expiresAt: Date;
@@ -97,10 +165,14 @@ export async function createPortalForAdmin(input: {
   }
 
   const generated = generatePortalToken();
+  const encryptedPublicToken = createPortalTokenVault(
+    environment.TOKEN_ENCRYPTION_KEY,
+  ).encrypt(generated.publicToken, generated.publicTokenHash);
   const result = await createPortalRecordForAdmin({
     adminId: input.adminId,
     name,
     expiresAt: input.expiresAt,
+    encryptedPublicToken,
     publicTokenHash: generated.publicTokenHash,
     allowedMimeTypes: [...PILOT_ALLOWED_MIME_TYPES],
     maxFileSizeBytes: environment.MAX_FILE_SIZE_BYTES,
@@ -143,17 +215,35 @@ export function assertPortalAcceptsSubmissions(portal: PublicPortal): void {
   }
 }
 
-export async function listPortalsForAdmin(adminId: string): Promise<PublicPortal[]> {
+export async function listPortalsForAdmin(adminId: string): Promise<AdminPortal[]> {
   const records = await listPortalRecordsForAdmin(adminId);
 
-  return Promise.all(records.map(normalizeExpiry));
+  return Promise.all(records.map(normalizeAdminExpiry));
+}
+
+export async function deleteClosedPortalForAdmin(input: {
+  adminId: string;
+  portalId: string;
+}): Promise<void> {
+  const result = await deleteClosedPortalRecordForAdmin({
+    actorId: input.adminId,
+    portalId: input.portalId,
+  });
+
+  if (result.kind === "not_found") {
+    throw new PortalServiceError("PORTAL_NOT_FOUND");
+  }
+
+  if (result.kind === "not_closed") {
+    throw new PortalServiceError("PORTAL_NOT_CLOSED");
+  }
 }
 
 export async function transitionPortalForAdmin(input: {
   adminId: string;
   portalId: string;
   status: Extract<PortalState, "OPEN" | "CLOSED">;
-}): Promise<PublicPortal> {
+}): Promise<AdminPortal> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const current = await getPortalForAdmin(input.adminId, input.portalId);
 
@@ -167,7 +257,7 @@ export async function transitionPortalForAdmin(input: {
     }
 
     if (current.status === input.status) {
-      return toPublicPortal(current);
+      return toAdminPortal(current);
     }
 
     if (
@@ -199,7 +289,7 @@ export async function transitionPortalForAdmin(input: {
     }
 
     if (result.kind === "updated") {
-      return toPublicPortal({
+      return toAdminPortal({
         ...current,
         ...result.portal,
       });

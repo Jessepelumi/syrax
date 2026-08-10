@@ -19,7 +19,6 @@ No credentials belong in this document or repository.
 7. Create API key for Picker. Restrict it to Google Picker API and approved HTTP referrers, including
    local and production origins.
 8. Copy numeric project number, not project ID, into `GOOGLE_CLOUD_PROJECT_NUMBER`.
-9. Create existing Drive folder named exactly `TJWeddingGuestUpload` in approved host account.
 
 ## Local environment
 
@@ -33,9 +32,9 @@ email returned by Google.
 2. Confirm `/api/health` returns HTTP 200 with `database: "ok"`.
 3. Open `/admin`; connect configured account.
 4. Confirm Google consent includes `drive.file`, not broad `drive` scope.
-5. On `/admin/destination`, open Picker and deliberately choose existing
-   `TJWeddingGuestUpload` folder.
-6. Confirm page shows `ACTIVE`, expected name, and verification timestamp.
+5. On `/admin/destination`, either deliberately choose any writable folder through Picker or create
+   a new root-level folder in My Drive.
+6. Confirm page shows `ACTIVE`, the selected folder name, and verification timestamp.
 7. Choose one disposable JPEG or PNG in the **Milestone 0 gate** panel and run the one-file test.
 8. Confirm the page says **Provider-confirmed upload complete** and the generated
    `syrax-feasibility-*` file exists in the selected folder.
@@ -57,5 +56,6 @@ retrying Picker.
 - [Choose Drive API scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
 - [Google Picker web sample](https://developers.google.com/workspace/drive/picker/guides/web-picker-sample)
 - [Select folder with DocsView](https://developers.google.com/workspace/drive/picker/reference/picker.docsview.setselectfolderenabled)
+- [Create and populate Drive folders](https://developers.google.com/workspace/drive/api/guides/folder)
 - [Drive file resource and capabilities](https://developers.google.com/workspace/drive/api/reference/rest/v3/files)
 - [Drive resumable uploads](https://developers.google.com/workspace/drive/api/guides/manage-uploads)

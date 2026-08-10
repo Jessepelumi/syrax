@@ -34,7 +34,6 @@ export const environmentSchema = z
     GOOGLE_OAUTH_REDIRECT_URI: z.url(),
     GOOGLE_API_KEY: z.string().min(1),
     GOOGLE_CLOUD_PROJECT_NUMBER: z.string().regex(/^\d+$/),
-    PILOT_DESTINATION_NAME: z.string().trim().min(1).max(255),
     DEFAULT_PORTAL_EXPIRY: z.iso.datetime({ offset: true }),
     MAX_FILE_SIZE_BYTES: positiveInteger,
     MAX_FILES_PER_SUBMISSION: positiveInteger.max(100),

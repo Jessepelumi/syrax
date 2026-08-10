@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gt, lte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, lte, ne, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
 import {
@@ -9,15 +9,19 @@ import {
   driveDestinations,
   type Portal,
   portals,
+  submissions,
 } from "@/db/schema";
 import { newId } from "@/lib/ids";
 
-export type PortalRecord = Omit<Portal, "publicTokenHash">;
+export type PortalRecord = Omit<Portal, "encryptedPublicToken" | "publicTokenHash">;
 
 export type PortalProviderRecord = PortalRecord & {
   connectionStatus: "ACTIVE" | "REVOKED" | "ERROR";
   destinationStatus: "ACTIVE" | "INVALID" | "DISCONNECTED";
 };
+
+export type AdminPortalProviderRecord = PortalProviderRecord &
+  Pick<Portal, "encryptedPublicToken" | "publicTokenHash">;
 
 export type CreatePortalRecordResult =
   | { kind: "created"; portal: PortalRecord }
@@ -28,6 +32,11 @@ export type TransitionPortalRecordResult =
   | { kind: "portal_already_open" }
   | { kind: "state_conflict" }
   | { kind: "updated"; portal: PortalRecord };
+
+export type DeletePortalRecordResult =
+  | { kind: "deleted" }
+  | { kind: "not_closed" }
+  | { kind: "not_found" };
 
 const portalRecordSelection = {
   allowedMimeTypes: portals.allowedMimeTypes,
@@ -49,6 +58,12 @@ const portalProviderSelection = {
   destinationStatus: driveDestinations.status,
 };
 
+const adminPortalProviderSelection = {
+  ...portalProviderSelection,
+  encryptedPublicToken: portals.encryptedPublicToken,
+  publicTokenHash: portals.publicTokenHash,
+};
+
 export async function createPortalRecordForAdmin(input: {
   adminId: string;
   allowedMimeTypes: string[];
@@ -57,6 +72,7 @@ export async function createPortalRecordForAdmin(input: {
   maxFilesPerSubmission: number;
   maxSubmissionBytes: number;
   name: string;
+  encryptedPublicToken: string;
   publicTokenHash: string;
 }): Promise<CreatePortalRecordResult> {
   return getDatabase().transaction(async (transaction) => {
@@ -122,9 +138,10 @@ export async function createPortalRecordForAdmin(input: {
           eq(driveConnections.adminId, input.adminId),
           eq(driveConnections.status, "ACTIVE"),
           eq(driveDestinations.status, "ACTIVE"),
+          isNotNull(driveDestinations.selectedAt),
         ),
       )
-      .orderBy(desc(driveDestinations.updatedAt))
+      .orderBy(desc(driveDestinations.selectedAt))
       .limit(1);
 
     if (!destination) {
@@ -137,6 +154,7 @@ export async function createPortalRecordForAdmin(input: {
         id: newId("portal"),
         destinationId: destination.id,
         name: input.name,
+        encryptedPublicToken: input.encryptedPublicToken,
         publicTokenHash: input.publicTokenHash,
         status: "OPEN",
         expiresAt: input.expiresAt,
@@ -187,9 +205,9 @@ export async function findPortalByPublicTokenHash(
 export async function getPortalForAdmin(
   adminId: string,
   portalId: string,
-): Promise<PortalProviderRecord | undefined> {
+): Promise<AdminPortalProviderRecord | undefined> {
   const [portal] = await getDatabase()
-    .select(portalProviderSelection)
+    .select(adminPortalProviderSelection)
     .from(portals)
     .innerJoin(driveDestinations, eq(portals.destinationId, driveDestinations.id))
     .innerJoin(
@@ -204,9 +222,9 @@ export async function getPortalForAdmin(
 
 export async function listPortalRecordsForAdmin(
   adminId: string,
-): Promise<PortalProviderRecord[]> {
+): Promise<AdminPortalProviderRecord[]> {
   return getDatabase()
-    .select(portalProviderSelection)
+    .select(adminPortalProviderSelection)
     .from(portals)
     .innerJoin(driveDestinations, eq(portals.destinationId, driveDestinations.id))
     .innerJoin(
@@ -336,5 +354,65 @@ export async function transitionPortalRecordForAdmin(input: {
     });
 
     return { kind: "updated", portal: updated };
+  });
+}
+
+export async function deleteClosedPortalRecordForAdmin(input: {
+  actorId: string;
+  portalId: string;
+}): Promise<DeletePortalRecordResult> {
+  return getDatabase().transaction(async (transaction) => {
+    await transaction.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${input.actorId}, 0))`,
+    );
+
+    const [owned] = await transaction
+      .select({ status: portals.status })
+      .from(portals)
+      .innerJoin(driveDestinations, eq(portals.destinationId, driveDestinations.id))
+      .innerJoin(
+        driveConnections,
+        eq(driveDestinations.driveConnectionId, driveConnections.id),
+      )
+      .where(
+        and(
+          eq(driveConnections.adminId, input.actorId),
+          eq(portals.id, input.portalId),
+        ),
+      )
+      .limit(1);
+
+    if (!owned) {
+      return { kind: "not_found" };
+    }
+
+    if (owned.status !== "CLOSED") {
+      return { kind: "not_closed" };
+    }
+
+    const deletedSubmissions = await transaction
+      .delete(submissions)
+      .where(eq(submissions.portalId, input.portalId))
+      .returning({ id: submissions.id });
+    const [deleted] = await transaction
+      .delete(portals)
+      .where(and(eq(portals.id, input.portalId), eq(portals.status, "CLOSED")))
+      .returning({ id: portals.id });
+
+    if (!deleted) {
+      return { kind: "not_closed" };
+    }
+
+    await transaction.insert(auditEvents).values({
+      id: newId("audit"),
+      actorType: "ADMIN",
+      actorId: input.actorId,
+      eventType: "portal.deleted",
+      resourceType: "portal",
+      resourceId: input.portalId,
+      metadata: { deletedSubmissionCount: deletedSubmissions.length },
+    });
+
+    return { kind: "deleted" };
   });
 }

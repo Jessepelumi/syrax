@@ -8,6 +8,7 @@ import { hasJsonContentType, readJsonBody } from "@/lib/request-body";
 import { getAdminSessionFromRequest } from "@/server/auth/admin-session";
 import { hasExpectedOrigin } from "@/server/auth/request-security";
 import {
+  deleteClosedPortalForAdmin,
   PortalServiceError,
   transitionPortalForAdmin,
 } from "@/server/portals/portal-service";
@@ -99,6 +100,7 @@ export async function PATCH(
           name: portal.name,
           status: portal.status,
           expiresAt: portal.expiresAt.toISOString(),
+          portalUrl: portal.portalUrl,
         },
       },
       {
@@ -148,6 +150,97 @@ export async function PATCH(
     return errorResponse({
       code: "INTERNAL_ERROR",
       message: "Portal status could not be changed.",
+      requestId,
+      status: 500,
+    });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ portalId: string }> },
+): Promise<Response> {
+  const requestId = newId("req");
+  const session = await getAdminSessionFromRequest(request);
+
+  if (!session) {
+    return errorResponse({
+      code: "ADMIN_UNAUTHORIZED",
+      message: "Connect the configured Google account first.",
+      requestId,
+      status: 401,
+    });
+  }
+
+  if (!hasExpectedOrigin(request)) {
+    return errorResponse({
+      code: "INVALID_REQUEST",
+      message: "Request origin is not allowed.",
+      requestId,
+      status: 403,
+    });
+  }
+
+  const { portalId } = await context.params;
+
+  if (!portalId || portalId.length > 128) {
+    return errorResponse({
+      code: "INVALID_REQUEST",
+      message: "Portal deletion request is invalid.",
+      requestId,
+      status: 400,
+    });
+  }
+
+  try {
+    await deleteClosedPortalForAdmin({ adminId: session.adminId, portalId });
+
+    getLogger().info({
+      event: "portal.deleted",
+      requestId,
+      adminId: session.adminId,
+      portalId,
+    });
+
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Cache-Control": "private, no-store",
+        "X-Request-Id": requestId,
+      },
+    });
+  } catch (error) {
+    if (error instanceof PortalServiceError) {
+      if (error.code === "PORTAL_NOT_FOUND") {
+        return errorResponse({
+          code: error.code,
+          message: "Portal was not found.",
+          requestId,
+          status: 404,
+        });
+      }
+
+      if (error.code === "PORTAL_NOT_CLOSED") {
+        return errorResponse({
+          code: error.code,
+          message: "Close the portal before deleting it.",
+          requestId,
+          status: 409,
+        });
+      }
+    }
+
+    getLogger().error({
+      event: "portal.delete_failed",
+      requestId,
+      adminId: session.adminId,
+      portalId,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    });
+
+    return errorResponse({
+      code: "INTERNAL_ERROR",
+      message: "Portal could not be deleted.",
       requestId,
       status: 500,
     });

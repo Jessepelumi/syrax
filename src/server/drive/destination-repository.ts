@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
 import { auditEvents, driveConnections, driveDestinations } from "@/db/schema";
@@ -13,7 +13,22 @@ export async function saveDriveDestination(input: {
   providerFolderId: string;
 }) {
   return getDatabase().transaction(async (transaction) => {
+    await transaction.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${input.connectionId}, 0))`,
+    );
+
     const now = new Date();
+
+    await transaction
+      .update(driveDestinations)
+      .set({ selectedAt: null, updatedAt: now })
+      .where(
+        and(
+          eq(driveDestinations.driveConnectionId, input.connectionId),
+          isNotNull(driveDestinations.selectedAt),
+        ),
+      );
+
     const [destination] = await transaction
       .insert(driveDestinations)
       .values({
@@ -21,6 +36,7 @@ export async function saveDriveDestination(input: {
         driveConnectionId: input.connectionId,
         providerFolderId: input.providerFolderId,
         displayName: input.displayName,
+        selectedAt: now,
         verifiedAt: now,
         status: "ACTIVE",
       })
@@ -31,6 +47,7 @@ export async function saveDriveDestination(input: {
         ],
         set: {
           displayName: input.displayName,
+          selectedAt: now,
           status: "ACTIVE",
           updatedAt: now,
           verifiedAt: now,
@@ -62,6 +79,7 @@ export async function getDriveDestinationForAdmin(adminId: string) {
     .select({
       displayName: driveDestinations.displayName,
       status: driveDestinations.status,
+      selectedAt: driveDestinations.selectedAt,
       verifiedAt: driveDestinations.verifiedAt,
     })
     .from(driveDestinations)
@@ -69,8 +87,13 @@ export async function getDriveDestinationForAdmin(adminId: string) {
       driveConnections,
       eq(driveDestinations.driveConnectionId, driveConnections.id),
     )
-    .where(eq(driveConnections.adminId, adminId))
-    .orderBy(desc(driveDestinations.updatedAt))
+    .where(
+      and(
+        eq(driveConnections.adminId, adminId),
+        isNotNull(driveDestinations.selectedAt),
+      ),
+    )
+    .orderBy(desc(driveDestinations.selectedAt))
     .limit(1);
 
   return destination;
@@ -94,9 +117,10 @@ export async function getActiveDriveDestinationForAdmin(adminId: string) {
         eq(driveConnections.adminId, adminId),
         eq(driveConnections.status, "ACTIVE"),
         eq(driveDestinations.status, "ACTIVE"),
+        isNotNull(driveDestinations.selectedAt),
       ),
     )
-    .orderBy(desc(driveDestinations.updatedAt))
+    .orderBy(desc(driveDestinations.selectedAt))
     .limit(1);
 
   return destination;

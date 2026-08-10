@@ -4,9 +4,8 @@ Multi-Modal Storage Gateway and Ephemeral Transfer Platform.
 
 ## Syrax Intake wedding pilot
 
-Milestone 0 control plane for connecting one approved Google account and deliberately selecting
-the existing `TJWeddingGuestUpload` folder through Google Picker. Guest upload UI is intentionally not
-implemented yet.
+Wedding guest-upload portal for connecting one approved Google account, selecting or creating a
+Drive destination, generating a capability link, and receiving provider-confirmed guest images.
 
 ### Requirements
 
@@ -47,7 +46,8 @@ implemented yet.
 
 5. Verify `http://localhost:3000/api/health`, then open `http://localhost:3000/admin`.
 
-6. Connect configured admin Google account and select `TJWeddingGuestUpload` in Picker.
+6. Connect the configured admin Google account, then select any writable Drive folder or create a
+   new destination from the admin page.
 
 ### Checks
 

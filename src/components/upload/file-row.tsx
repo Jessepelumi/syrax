@@ -60,31 +60,16 @@ export function FileRow({
   const cancellable = ["SESSION_READY", "UPLOADING", "RETRY_WAIT"].includes(
     item.status,
   );
-  const progress = Math.min(
-    100,
-    Math.round((item.confirmedBytes / item.file.size) * 100),
-  );
 
   return (
     <li className="rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-semibold text-slate-950">{item.file.name}</p>
-          <p className="mt-1 text-xs text-slate-500">
-            {formatBytes(item.file.size)} · {statusLabel(item.status)}
-          </p>
-        </div>
-        <span className="text-sm font-semibold text-slate-700">
-          {item.status === "COMPLETED" ? "✓" : `${progress}%`}
-        </span>
+      <div className="min-w-0">
+        <p className="truncate font-semibold text-slate-950">{item.file.name}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          {formatBytes(item.file.size)} · {statusLabel(item.status)}
+          {item.status === "COMPLETED" ? " ✓" : ""}
+        </p>
       </div>
-
-      <progress
-        aria-label={`${item.file.name} upload progress`}
-        className="mt-3 h-2 w-full accent-emerald-700"
-        max={item.file.size}
-        value={item.confirmedBytes}
-      />
 
       {item.error ? (
         <p className="mt-2 text-sm text-red-700" role="alert">

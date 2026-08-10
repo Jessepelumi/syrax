@@ -6,10 +6,12 @@ interface PortalSummary {
   expiresAt: string;
   id: string;
   name: string;
+  portalUrl?: string;
   status: "DRAFT" | "OPEN" | "CLOSED" | "EXPIRED";
 }
 
 interface PortalManagerProps {
+  canCreatePortal: boolean;
   defaultExpiry: string;
   initialPortals: PortalSummary[];
 }
@@ -28,11 +30,14 @@ async function responseError(response: Response): Promise<string> {
   return body?.error?.message ?? "Request failed. Try again.";
 }
 
-export function PortalManager({ defaultExpiry, initialPortals }: PortalManagerProps) {
+export function PortalManager({
+  canCreatePortal,
+  defaultExpiry,
+  initialPortals,
+}: PortalManagerProps) {
   const [portals, setPortals] = useState(initialPortals);
   const [name, setName] = useState("Share your wedding photos");
   const [expiresAt, setExpiresAt] = useState(utcDateTimeValue(defaultExpiry));
-  const [generatedUrl, setGeneratedUrl] = useState<string>();
   const [copyStatus, setCopyStatus] = useState<string>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -45,7 +50,6 @@ export function PortalManager({ defaultExpiry, initialPortals }: PortalManagerPr
     event.preventDefault();
     setBusy(true);
     setError(undefined);
-    setGeneratedUrl(undefined);
     setCopyStatus(undefined);
 
     try {
@@ -73,10 +77,9 @@ export function PortalManager({ defaultExpiry, initialPortals }: PortalManagerPr
       };
 
       setPortals((current) => [
-        result.portal,
+        { ...result.portal, portalUrl: result.portal.portalUrl ?? result.portalUrl },
         ...current.filter((portal) => portal.id !== result.portal.id),
       ]);
-      setGeneratedUrl(result.portalUrl);
     } catch {
       setError("Portal could not be created. Check the connection and try again.");
     } finally {
@@ -87,6 +90,7 @@ export function PortalManager({ defaultExpiry, initialPortals }: PortalManagerPr
   async function changeStatus(portalId: string, status: "OPEN" | "CLOSED") {
     setBusy(true);
     setError(undefined);
+    setCopyStatus(undefined);
 
     try {
       const response = await fetch(`/api/admin/portals/${encodeURIComponent(portalId)}`, {
@@ -113,13 +117,41 @@ export function PortalManager({ defaultExpiry, initialPortals }: PortalManagerPr
     }
   }
 
-  async function copyGeneratedLink() {
-    if (!generatedUrl) {
+  async function deletePortal(portal: PortalSummary) {
+    const confirmed = window.confirm(
+      `Delete “${portal.name}” and its Syrax submission history? Files already uploaded to Google Drive will remain.`,
+    );
+
+    if (!confirmed) {
       return;
     }
 
+    setBusy(true);
+    setError(undefined);
+    setCopyStatus(undefined);
+
     try {
-      await navigator.clipboard.writeText(generatedUrl);
+      const response = await fetch(
+        `/api/admin/portals/${encodeURIComponent(portal.id)}`,
+        { method: "DELETE" },
+      );
+
+      if (!response.ok) {
+        setError(await responseError(response));
+        return;
+      }
+
+      setPortals((current) => current.filter((item) => item.id !== portal.id));
+    } catch {
+      setError("Portal could not be deleted. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyGuestLink(portalUrl: string) {
+    try {
+      await navigator.clipboard.writeText(portalUrl);
       setCopyStatus("Copied");
     } catch {
       setCopyStatus("Select and copy the link manually");
@@ -128,29 +160,39 @@ export function PortalManager({ defaultExpiry, initialPortals }: PortalManagerPr
 
   return (
     <div className="mt-8 space-y-8">
-      {generatedUrl ? (
+      {openPortal ? (
         <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-          <h2 className="font-semibold text-emerald-950">Guest link created</h2>
+          <h2 className="font-semibold text-emerald-950">Active guest link</h2>
           <p className="mt-2 text-sm leading-6 text-emerald-900">
-            Copy it now. Syrax stores only its secure hash and cannot reveal this exact link again.
+            This link remains available here while the portal is open, including after a reload or
+            reopening the portal.
           </p>
-          <label className="mt-4 block text-sm font-semibold text-emerald-950" htmlFor="portal-url">
-            Portal URL
-          </label>
-          <input
-            className="mt-2 w-full rounded-xl border border-emerald-300 bg-white px-3 py-3 text-sm text-slate-950"
-            id="portal-url"
-            readOnly
-            value={generatedUrl}
-          />
-          <button
-            className="mt-3 min-h-11 rounded-full bg-emerald-900 px-5 text-sm font-semibold text-white disabled:opacity-60"
-            onClick={copyGeneratedLink}
-            type="button"
-          >
-            Copy guest link
-          </button>
-          {copyStatus ? <span className="ml-3 text-sm text-emerald-900" role="status">{copyStatus}</span> : null}
+          {openPortal.portalUrl ? (
+            <>
+              <label className="mt-4 block text-sm font-semibold text-emerald-950" htmlFor="portal-url">
+                Portal URL
+              </label>
+              <input
+                className="mt-2 w-full rounded-xl border border-emerald-300 bg-white px-3 py-3 text-sm text-slate-950"
+                id="portal-url"
+                readOnly
+                value={openPortal.portalUrl}
+              />
+              <button
+                className="mt-3 min-h-11 rounded-full bg-emerald-900 px-5 text-sm font-semibold text-white disabled:opacity-60"
+                onClick={() => void copyGuestLink(openPortal.portalUrl!)}
+                type="button"
+              >
+                Copy guest link
+              </button>
+              {copyStatus ? <span className="ml-3 text-sm text-emerald-900" role="status">{copyStatus}</span> : null}
+            </>
+          ) : (
+            <p className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              This portal predates recoverable admin links. Close it and generate a replacement to
+              keep the new link available here.
+            </p>
+          )}
         </section>
       ) : null}
 
@@ -165,6 +207,11 @@ export function PortalManager({ defaultExpiry, initialPortals }: PortalManagerPr
         {openPortal ? (
           <p className="mt-3 text-sm leading-6 text-slate-600">
             One portal is already open. Close it below before generating a replacement link.
+          </p>
+        ) : !canCreatePortal ? (
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Select a Drive destination before generating a new guest link. Existing portal history
+            remains available below.
           </p>
         ) : (
           <form className="mt-5 space-y-5" onSubmit={createPortal}>
@@ -236,14 +283,24 @@ export function PortalManager({ defaultExpiry, initialPortals }: PortalManagerPr
                   </button>
                 ) : null}
                 {portal.status === "CLOSED" ? (
-                  <button
-                    className="mt-4 text-sm font-semibold text-emerald-800 underline disabled:opacity-60"
-                    disabled={busy}
-                    onClick={() => changeStatus(portal.id, "OPEN")}
-                    type="button"
-                  >
-                    Reopen retained link
-                  </button>
+                  <div className="mt-4 flex flex-wrap gap-4">
+                    <button
+                      className="text-sm font-semibold text-emerald-800 underline disabled:opacity-60"
+                      disabled={busy}
+                      onClick={() => changeStatus(portal.id, "OPEN")}
+                      type="button"
+                    >
+                      Reopen retained link
+                    </button>
+                    <button
+                      className="text-sm font-semibold text-red-700 underline disabled:opacity-60"
+                      disabled={busy}
+                      onClick={() => void deletePortal(portal)}
+                      type="button"
+                    >
+                      Delete portal
+                    </button>
+                  </div>
                 ) : null}
               </li>
             ))}

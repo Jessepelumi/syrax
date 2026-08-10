@@ -98,6 +98,7 @@ export const driveDestinations = pgTable(
     providerFolderId: text("provider_folder_id").notNull(),
     displayName: text("display_name").notNull(),
     verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull(),
+    selectedAt: timestamp("selected_at", { withTimezone: true }),
     status: driveDestinationStatus("status").notNull().default("ACTIVE"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -111,6 +112,9 @@ export const driveDestinations = pgTable(
       table.driveConnectionId,
       table.updatedAt,
     ),
+    uniqueIndex("drive_destinations_connection_selected_unique")
+      .on(table.driveConnectionId)
+      .where(sql`${table.selectedAt} is not null`),
   ],
 );
 
@@ -123,6 +127,7 @@ export const portals = pgTable(
       .references(() => driveDestinations.id, { onDelete: "restrict" }),
     name: text("name").notNull(),
     publicTokenHash: text("public_token_hash").notNull(),
+    encryptedPublicToken: text("encrypted_public_token"),
     status: portalStatus("status").notNull().default("DRAFT"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     allowedMimeTypes: text("allowed_mime_types").array().notNull(),
@@ -155,7 +160,7 @@ export const submissions = pgTable(
     id: text("id").primaryKey(),
     portalId: text("portal_id")
       .notNull()
-      .references(() => portals.id, { onDelete: "restrict" }),
+      .references(() => portals.id, { onDelete: "cascade" }),
     status: submissionStatus("status").notNull().default("CREATED"),
     guestName: text("guest_name"),
     fileCount: integer("file_count").notNull(),

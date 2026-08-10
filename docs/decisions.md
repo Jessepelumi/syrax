@@ -120,8 +120,8 @@
 - **Reason:** A retrievable plaintext capability would turn the database into a guest-link secret
   store. A transaction-scoped PostgreSQL advisory lock serializes concurrent create/reopen requests
   for the same admin without adding pilot-only schema.
-- **Status:** Accepted for the pilot. Hosts must copy a new link when shown; reopening is useful only
-  when they retained the original link.
+- **Status:** Superseded by D-020 for portals created after migration `0003_shallow_stone_men`.
+  Existing hash-only portals remain intentionally unrecoverable.
 
 ## D-014: Initial durable portal media policy
 
@@ -178,3 +178,56 @@
   resumable session. The remaining provider session receives no further bytes from Syrax and ages
   out; a final request already accepted by Google may still reconcile as completed.
 - **Status:** Accepted for the pilot; document this nuance in the event runbook.
+
+## D-019: Flexible Drive destinations and root-level folder creation
+
+- **Decision:** Accept any Picker-selected folder that is a non-trashed Drive folder with
+  `canAddChildren=true`. Remove the pilot name equality gate. Let the admin create a normalized,
+  root-level My Drive folder through `files.create`; verify and persist the returned immutable folder
+  ID through the same destination path used by Picker.
+- **Reason:** Destination identity and write capability are the security boundaries. A folder name is
+  mutable display metadata and should not restrict the product to one wedding folder. Root-level
+  creation is the smallest unambiguous admin flow when no parent was requested.
+- **Status:** Accepted. Existing portals stay pinned to their original destination row; only the
+  destination explicitly marked current under D-022 is used for newly generated portals.
+
+## D-020: Recoverable active portal links for authenticated admins
+
+- **Decision:** Continue storing the SHA-256 portal-token hash as the guest lookup boundary. Also
+  store an AES-256-GCM encrypted capability for authenticated admin display, with the hash included
+  as authenticated data. Return the decrypted URL only while the portal is `OPEN`; retain the
+  ciphertext while closed so reopening restores the same link.
+- **Reason:** Hosts must be able to retrieve an active link after navigation, reload, or reopening.
+  Authenticated encryption avoids plaintext capability storage and prevents ciphertext from being
+  moved between portal records without detection.
+- **Status:** Accepted in additive migration `0003_shallow_stone_men`. Pre-migration hash-only links
+  cannot be reconstructed and require replacement if the host did not retain them.
+
+## D-021: Aggregate guest upload progress
+
+- **Decision:** Display one byte-based progress bar for the full submission and pair it with a
+  provider-confirmed completed-file count such as `4/20 images uploaded`. Keep per-file state,
+  retry, and cancellation controls without individual progress bars.
+- **Reason:** A single aggregate bar is easier to scan on mobile while byte-based movement remains
+  smoother and more accurate than advancing only when a whole image completes.
+- **Status:** Accepted for the wedding upload experience.
+
+## D-022: Explicit current destination selection
+
+- **Decision:** Track the admin's current destination with nullable `selected_at`. Historical rows
+  remain available for portals already pinned to them, while only one destination per Drive
+  connection can have a non-null selection timestamp. Existing rows migrate unselected.
+- **Reason:** Destination health and current user intent are different states. Treating the most
+  recently updated healthy row as implicitly selected caused an old pilot folder to remain active.
+- **Status:** Accepted. Selecting or creating a folder atomically clears the previous selection and
+  marks the new destination current.
+
+## D-023: Closed portal deletion
+
+- **Decision:** Authenticated admins may permanently delete only `CLOSED` portals. Deletion removes
+  their Syrax submissions, upload-file records, and stored capability, but never deletes files from
+  Google Drive. A redacted deletion audit event is retained.
+- **Reason:** Closed links need a safe cleanup path without broadening Syrax into a Drive file
+  deletion tool. Restricting deletion to closed portals prevents live links from disappearing by
+  accident.
+- **Status:** Accepted with an explicit browser confirmation and server-side state enforcement.

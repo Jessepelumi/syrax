@@ -8,7 +8,7 @@ import {
 
 const validFolder = {
   id: "folder-id",
-  name: "TJWeddingGuestUpload",
+  name: "Family uploads",
   mimeType: GOOGLE_DRIVE_FOLDER_MIME_TYPE,
   trashed: false,
   capabilities: { canAddChildren: true },
@@ -16,7 +16,7 @@ const validFolder = {
 
 function expectCode(input: Partial<typeof validFolder>, code: string) {
   try {
-    validateDriveDestination({ ...validFolder, ...input }, validFolder.name);
+    validateDriveDestination({ ...validFolder, ...input });
     throw new Error("Expected destination validation to fail");
   } catch (error) {
     expect(error).toBeInstanceOf(DestinationValidationError);
@@ -25,10 +25,10 @@ function expectCode(input: Partial<typeof validFolder>, code: string) {
 }
 
 describe("validateDriveDestination", () => {
-  it("accepts the expected writable folder", () => {
-    expect(validateDriveDestination(validFolder, validFolder.name)).toEqual({
+  it("accepts any writable folder", () => {
+    expect(validateDriveDestination({ ...validFolder, name: "Family uploads" })).toEqual({
       id: validFolder.id,
-      name: validFolder.name,
+      name: "Family uploads",
     });
   });
 
@@ -42,9 +42,5 @@ describe("validateDriveDestination", () => {
 
   it("rejects a folder that cannot accept children", () => {
     expectCode({ capabilities: { canAddChildren: false } }, "DESTINATION_NOT_WRITABLE");
-  });
-
-  it("rejects a different pilot folder name", () => {
-    expectCode({ name: "AnotherFolder" }, "DESTINATION_NAME_MISMATCH");
   });
 });

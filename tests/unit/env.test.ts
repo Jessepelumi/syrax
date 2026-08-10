@@ -14,7 +14,6 @@ const validEnvironment = {
   GOOGLE_OAUTH_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
   GOOGLE_API_KEY: "api-key",
   GOOGLE_CLOUD_PROJECT_NUMBER: "123456789",
-  PILOT_DESTINATION_NAME: "TJWeddingGuestUpload",
   DEFAULT_PORTAL_EXPIRY: "2026-08-31T23:59:59Z",
   MAX_FILE_SIZE_BYTES: "2147483648",
   MAX_FILES_PER_SUBMISSION: "50",

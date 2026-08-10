@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { GoogleFolderPicker } from "@/components/admin/google-folder-picker";
-import { getEnvironment } from "@/lib/env";
 import { getAdminSession } from "@/server/auth/admin-session";
 import { getDriveDestinationForAdmin } from "@/server/drive/destination-repository";
 
@@ -14,7 +13,6 @@ export default async function DestinationPage() {
   }
 
   const destination = await getDriveDestinationForAdmin(session.adminId);
-  const expectedName = getEnvironment().PILOT_DESTINATION_NAME;
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16 sm:py-24">
@@ -28,8 +26,8 @@ export default async function DestinationPage() {
         Select wedding destination
       </h1>
       <p className="mt-4 text-lg leading-8 text-slate-600">
-        Use Google Picker to deliberately choose existing <strong>{expectedName}</strong> folder.
-        Server verifies folder type, trash state, exact pilot name, and ability to add children.
+        Choose any existing writable Drive folder, or create a new folder in My Drive. Syrax
+        verifies the destination before guest links can use it.
       </p>
 
       {destination ? (
@@ -52,9 +50,14 @@ export default async function DestinationPage() {
             Manage guest portal
           </Link>
         </>
-      ) : null}
+      ) : (
+        <p className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
+          No destination is selected. Choose an existing folder or create one below before managing
+          guest portals.
+        </p>
+      )}
 
-      <GoogleFolderPicker expectedName={expectedName} />
+      <GoogleFolderPicker />
 
       <a className="mt-8 inline-block text-sm font-semibold text-slate-600 underline" href="/api/auth/google/start">
         Reconnect Google account

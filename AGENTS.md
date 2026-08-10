@@ -8,12 +8,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# TJWeddingGuestUpload - Agent Build Guide
+# Syrax Intake - Agent Build Guide
 
 **Document purpose:** Instruct an implementation agent to scaffold and build the wedding guest-upload pilot safely and incrementally.
 
 **Project:** Syrax Intake wedding pilot  
-**Google Drive test destination:** `TJWeddingGuestUpload`  
+**Google Drive test destination:** Admin-selected writable folder
 **Target:** 150-200 expected guests; load-test the control plane for 500 distinct guests  
 **Primary client:** Mobile browser  
 **Status:** Implementation guide for the first working vertical slice
@@ -49,7 +49,7 @@ This project is **Syrax Intake**, not the entire Syrax platform. Do not implemen
 
 The first success is not a polished website. It is this verified path:
 
-> An anonymous guest opens a portal on a phone, selects one disposable image, uploads it through a resumable Google Drive session, and sees success only after Google Drive acknowledges the file in the selected `TJWeddingGuestUpload` folder.
+> An anonymous guest opens a portal on a phone, selects one disposable image, uploads it through a resumable Google Drive session, and sees success only after Google Drive acknowledges the file in the selected destination folder.
 
 ---
 
@@ -76,13 +76,13 @@ The first success is not a polished website. It is this verified path:
 
 ### Why the Drive folder ID matters
 
-The folder name `TJWeddingGuestUpload` is human-readable but not a stable identifier. Folder names can be duplicated or renamed. The app must store and use the folder ID returned by Google Picker.
+A folder name is human-readable but not a stable identifier. Folder names can be duplicated or renamed. The app must store and use the folder ID returned by Google Picker.
 
 The expected setup flow is:
 
 1. The host connects their Google account.
 2. The host opens Google Picker.
-3. The host selects the existing `TJWeddingGuestUpload` folder.
+3. The host selects an existing writable folder or creates a new folder.
 4. The server validates that the selected item is a folder and that the connected account can create files in it.
 5. The server stores the folder ID and displays the folder name for confirmation.
 
@@ -96,7 +96,7 @@ Do not attempt to discover the folder by name and silently choose the first matc
 
 - One host/admin Google account.
 - One active upload portal.
-- One selected Google Drive destination folder: `TJWeddingGuestUpload`.
+- One explicitly selected Google Drive destination folder.
 - Public mobile-first upload page without guest registration.
 - Selection of multiple photos or videos.
 - Client-side type and size validation.
@@ -149,7 +149,7 @@ Deliverables:
 - Next.js project boots locally.
 - `/api/health` returns application and database health.
 - Google OAuth start and callback routes work for the configured test user.
-- The admin can select `TJWeddingGuestUpload` through Google Picker.
+- The admin can select an existing writable folder through Google Picker.
 - The server can create a Drive resumable-upload session targeting the selected folder.
 - A disposable image uploads from desktop Chrome and reaches the folder.
 - The same flow is tested on iOS Safari and Android Chrome.
@@ -411,7 +411,6 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
 GOOGLE_API_KEY=replace-me
 GOOGLE_CLOUD_PROJECT_NUMBER=replace-me
 
-PILOT_DESTINATION_NAME=TJWeddingGuestUpload
 DEFAULT_PORTAL_EXPIRY=2026-08-31T23:59:59Z
 MAX_FILE_SIZE_BYTES=2147483648
 MAX_FILES_PER_SUBMISSION=50
@@ -428,7 +427,6 @@ Rules:
 - Refuse to boot when required production variables are missing.
 - Never make `GOOGLE_CLIENT_SECRET`, refresh tokens, encryption keys or database credentials available through `NEXT_PUBLIC_*` variables.
 - `GOOGLE_API_KEY` is used by Google Picker and must be restricted in Google Cloud to the required API and approved web origins.
-- `PILOT_DESTINATION_NAME` is display and validation metadata. The actual folder ID belongs in the database after selection.
 - The listed expiry and file limits are examples. Confirm them before deployment.
 
 ---
@@ -475,9 +473,10 @@ At callback time:
 7. Create a short-lived signed admin session cookie.
 8. Redirect to `/admin/destination`.
 
-### Selecting `TJWeddingGuestUpload`
+### Selecting a destination folder
 
-Use Google Picker with folder selection enabled. The host must deliberately select the existing folder.
+Use Google Picker with folder selection enabled. The host must deliberately select an existing
+writable folder, or explicitly create a new folder from the admin page.
 
 After Picker returns a folder ID:
 
@@ -486,8 +485,8 @@ After Picker returns a folder ID:
 3. Require MIME type `application/vnd.google-apps.folder`.
 4. Require `trashed !== true`.
 5. Verify that the connected account can create a disposable file in the folder or create a resumable session and safely abort it.
-6. Require the returned name to equal `TJWeddingGuestUpload` during the pilot unless the admin explicitly confirms a different folder.
-7. Persist the immutable folder ID, name, account identity and verification timestamp.
+6. Do not select or reject a folder based on its mutable display name.
+7. Persist the immutable folder ID, name, account identity, selection timestamp and verification timestamp.
 
 Do not make the folder publicly writable through Google Drive permissions. Guests upload through Syrax-issued sessions, not a public Drive share.
 
@@ -527,7 +526,8 @@ Use UUIDs or collision-resistant CUID2 values. Store timestamps in UTC.
 | `id` | Primary key |
 | `drive_connection_id` | Foreign key |
 | `provider_folder_id` | Selected Drive folder ID |
-| `display_name` | Expected `TJWeddingGuestUpload` |
+| `display_name` | Selected folder name for display only |
+| `selected_at` | Non-null only for the destination currently selected by the admin |
 | `verified_at` | Last successful permission check |
 | `status` | `ACTIVE`, `INVALID`, `DISCONNECTED` |
 
@@ -996,7 +996,7 @@ Record:
 
 ### Provider integration test
 
-Use a small controlled set of disposable files against `TJWeddingGuestUpload`:
+Use a small controlled set of disposable files against the selected test destination:
 
 - 10-20 simultaneous real uploads;
 - representative file sizes;
@@ -1017,7 +1017,7 @@ Use this exact order unless a verified repository constraint requires adjustment
 3. Connect PostgreSQL and implement `/api/health`.
 4. Create initial schema and migration.
 5. Implement Google OAuth state, callback, token encryption and admin session.
-6. Implement Picker-based folder selection and validation for `TJWeddingGuestUpload`.
+6. Implement Picker-based selection and validation for any writable folder.
 7. Implement a minimal Drive resumable-session service.
 8. Build a one-file spike page and test browser-to-Drive upload.
 9. Record the feasibility result in `docs/decisions.md`.
@@ -1056,7 +1056,7 @@ At the end of each step, report:
 
 - OAuth works for the configured test account.
 - `drive.file` is the only Drive content scope unless an exception is documented.
-- Picker selects the existing `TJWeddingGuestUpload` folder.
+- Picker selects an existing writable folder deliberately.
 - Folder ID is stored durably and never returned to guests.
 - A disposable file arrives in the selected folder.
 - Success is based on Drive acknowledgement.
@@ -1114,7 +1114,7 @@ Do not include raw secrets or recovery codes in the runbook.
 Before declaring the implementation complete, verify all of the following:
 
 - [ ] Only the wedding Intake scope was implemented.
-- [ ] The existing `TJWeddingGuestUpload` folder was selected intentionally.
+- [ ] A writable destination folder was selected or created intentionally.
 - [ ] The immutable Drive folder ID is stored server-side.
 - [ ] OAuth refresh tokens are encrypted at rest.
 - [ ] Guest pages receive no Drive or OAuth credentials.
@@ -1151,7 +1151,7 @@ Google recommends narrow scopes such as `drive.file` for appropriate application
 
 The first implementation agent should complete only this task:
 
-> Scaffold the Next.js project, add environment validation, PostgreSQL health checking, Google OAuth start/callback routes, secure token storage, and Google Picker folder selection. Prove that the existing `TJWeddingGuestUpload` folder can be selected and validated. Do not build the full guest upload UI yet.
+> Scaffold the Next.js project, add environment validation, PostgreSQL health checking, Google OAuth start/callback routes, secure token storage, and Google Picker folder selection. Prove that an existing writable folder can be selected and validated. Do not build the full guest upload UI yet.
 
 Expected handoff:
 
