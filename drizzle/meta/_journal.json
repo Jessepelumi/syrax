@@ -15,6 +15,13 @@
       "when": 1786364713176,
       "tag": "0001_goofy_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786369805296,
+      "tag": "0002_fancy_scorpion",
+      "breakpoints": true
     }
   ]
 }
