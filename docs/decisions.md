@@ -79,3 +79,15 @@
 - **Status:** Implemented for feasibility testing. Desktop testing proved direct byte delivery but
   exposed an ambiguous final browser response; reconciliation added 2026-08-08. Gate B still needs
   a successful reconciled desktop rerun and mobile-browser tests.
+
+## D-010: HEIC provider MIME normalization
+
+- **Decision:** When a validated browser file declares registered `image/heic`, accept Google
+  Drive returning registered `image/heif` during provider verification. Keep every other MIME
+  comparison exact, and continue requiring exact opaque upload ID, byte count, generated name, and
+  selected parent folder.
+- **Reason:** Three live HEIC tests on 2026-08-10 delivered every declared byte, but Drive normalized
+  the stored MIME type from `image/heic` to `image/heif`. IANA registers both image media types.
+  Treating the observed pair as equivalent avoids a false failure without allowing arbitrary image
+  types.
+- **Status:** Accepted for the pilot; covered by regression tests.

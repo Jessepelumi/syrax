@@ -29,6 +29,10 @@ awaits live browser testing.
   200 with the expected origin, method, and header allowances.
 - Completion now reconciles ambiguous browser results through opaque Drive app properties and
   server-side metadata verification. Application server still never handles file bytes.
+- Three HEIC attempts on 2026-08-10 transferred all 1,186,496 declared bytes each. Drive stored each
+  file as `image/heif` after the browser declared `image/heic`, causing strict MIME verification to
+  report a false failure. Verification now accepts only that observed registered MIME pair while
+  retaining exact checks for all other metadata.
 - Unit tests for environment, OAuth state, token vault tamper failure, and destination policy.
 - Production dependency audit: zero known vulnerabilities on 2026-08-07. Four moderate
   development-only findings remain in Drizzle Kit's deprecated loader; see decision D-007.
@@ -36,6 +40,7 @@ awaits live browser testing.
 ## Not yet proven
 
 - Successful desktop UI completion through the new ambiguous-response reconciliation path.
+- Successful HEIC UI completion after provider MIME normalization handling.
 - Desktop Chrome, iOS Safari, and Android Chrome upload behavior.
 - Interrupted upload logs and CORS response behavior.
 
