@@ -91,3 +91,23 @@
   Treating the observed pair as equivalent avoids a false failure without allowing arbitrary image
   types.
 - **Status:** Accepted for the pilot; covered by regression tests.
+
+## D-011: Immutable destination binding for portals
+
+- **Decision:** Preserve one destination row per Drive connection and provider folder ID. A portal
+  references that immutable destination row; selecting a different folder creates another row
+  instead of rewriting the existing row.
+- **Reason:** Existing upload links must continue targeting the destination explicitly chosen when
+  they were created. Mutating a shared destination row could silently redirect live portal uploads.
+- **Status:** Accepted for Milestone 1. The latest verified row remains the admin default for new
+  portals.
+
+## D-012: Milestone 1 concurrency and secret storage primitives
+
+- **Decision:** Add integer `version` columns to mutable submission and upload-file resources for
+  optimistic concurrency. Store Drive resumable-session references only as encrypted values while
+  retaining the guide's `provider_session_ref` database column name.
+- **Reason:** Upload callbacks and retries can race. Versioned updates allow services to reject stale
+  transitions, while encrypted session references avoid persisting bearer-like URLs in plaintext.
+- **Status:** Accepted. Service methods must update state, version, counters, and redacted audit
+  events in one transaction.

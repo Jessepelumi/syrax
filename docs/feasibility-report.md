@@ -1,7 +1,6 @@
 # Milestone 0 feasibility report
 
-**Status:** PostgreSQL, OAuth, and destination-selection gates passed; provider-direct byte path
-awaits live browser testing.
+**Status:** Milestone 0 feasibility gate passed; Milestone 1 approved on 2026-08-10.
 
 ## Implemented
 
@@ -33,20 +32,23 @@ awaits live browser testing.
   file as `image/heif` after the browser declared `image/heic`, causing strict MIME verification to
   report a false failure. Verification now accepts only that observed registered MIME pair while
   retaining exact checks for all other metadata.
+- JPEG, PNG, and HEIC uploads completed through provider reconciliation after the HEIC normalization
+  fix.
+- Production deployment on Vercel completed successfully, including the production Google OAuth
+  callback configuration.
+- The deployed provider-direct upload flow completed successfully in iOS Chrome on a mobile device.
 - Unit tests for environment, OAuth state, token vault tamper failure, and destination policy.
 - Production dependency audit: zero known vulnerabilities on 2026-08-07. Four moderate
   development-only findings remain in Drizzle Kit's deprecated loader; see decision D-007.
 
-## Not yet proven
+## Remaining event-readiness checks
 
-- Successful desktop UI completion through the new ambiguous-response reconciliation path.
-- Successful HEIC UI completion after provider MIME normalization handling.
-- Desktop Chrome, iOS Safari, and Android Chrome upload behavior.
+- iOS Safari and Android Chrome upload behavior.
+- Video upload behavior for MP4 and MOV.
 - Interrupted upload logs and CORS response behavior.
 
 ## Gate decision
 
-Do not proceed to durable portals or guest UI. Next approved task is one-file resumable-upload spike
-after live PostgreSQL, Google credentials, and selected folder are available. If direct browser PUT
-fails because of CORS, authorization, mobile-browser, or session constraints, record exact sanitized
-response and stop for architecture review. Do not add server file proxy.
+Proceed to Milestone 1 durable portal and submission resources. Keep remaining device and failure
+checks in the event-readiness matrix. Direct browser-to-Drive upload remains the byte path; do not add
+a server file proxy.
