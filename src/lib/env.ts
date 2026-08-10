@@ -8,7 +8,11 @@ const base64KeySchema = z.string().refine((value) => {
   return Buffer.from(value, "base64").byteLength === 32;
 }, "Must be a base64-encoded 32-byte key");
 
-const positiveInteger = z.coerce.number().int().positive();
+const positiveInteger = z.coerce
+  .number()
+  .int()
+  .positive()
+  .max(Number.MAX_SAFE_INTEGER);
 
 export const environmentSchema = z
   .object({
