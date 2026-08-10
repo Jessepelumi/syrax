@@ -111,3 +111,33 @@
   transitions, while encrypted session references avoid persisting bearer-like URLs in plaintext.
 - **Status:** Accepted. Service methods must update state, version, counters, and redacted audit
   events in one transaction.
+
+## D-013: One-time portal capability display and rotation
+
+- **Decision:** Return the raw 256-bit portal capability only in the no-store portal-creation
+  response. Persist only its SHA-256 hash. Allow one unexpired open portal per pilot admin; closing
+  the current portal permits creating a replacement capability.
+- **Reason:** A retrievable plaintext capability would turn the database into a guest-link secret
+  store. A transaction-scoped PostgreSQL advisory lock serializes concurrent create/reopen requests
+  for the same admin without adding pilot-only schema.
+- **Status:** Accepted for the pilot. Hosts must copy a new link when shown; reopening is useful only
+  when they retained the original link.
+
+## D-014: Initial durable portal media policy
+
+- **Decision:** Newly created pilot portals allow only the provider-tested `image/jpeg`,
+  `image/png`, and `image/heic` declarations. Destination extensions are derived from that MIME
+  policy, never from the guest filename.
+- **Reason:** The wedding MVP currently targets images, and these three types passed the direct
+  browser-to-Drive feasibility gate. MP4 and MOV remain untested and must not be silently enabled.
+- **Status:** Accepted for Milestone 1. Expand only after real-device provider testing.
+
+## D-015: Atomic guest submission acceptance
+
+- **Decision:** Lock the resolved portal row while rechecking `OPEN`, expiry, Drive connection, and
+  destination state; insert the submission, all file records, and redacted audit event in the same
+  transaction.
+- **Reason:** Portal closure or provider disconnection must not leave a partially accepted guest
+  submission. The per-submission client file ID unique index remains the durable file idempotency
+  boundary.
+- **Status:** Accepted for Milestone 1.
