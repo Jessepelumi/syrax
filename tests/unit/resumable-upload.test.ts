@@ -99,6 +99,35 @@ describe("validateFeasibilityUploadMetadata", () => {
     });
   });
 
+  it("accepts Drive normalizing declared HEIC to registered HEIF MIME", () => {
+    const heicMetadata = {
+      ...validMetadata,
+      appProperties: {
+        ...validMetadata.appProperties,
+        syraxDeclaredMimeType: "image/heic",
+      },
+      mimeType: "image/heif",
+      name: `syrax-feasibility-${uploadId}.heic`,
+    };
+
+    expect(
+      validateFeasibilityUploadMetadata({
+        destinationFolderId,
+        metadata: heicMetadata,
+        uploadId,
+      }),
+    ).toEqual({
+      destinationName: heicMetadata.name,
+      mimeType: "image/heic",
+      providerFileId: heicMetadata.id,
+      sizeBytes: 4096,
+    });
+  });
+
+  it("does not apply HEIC/HEIF equivalence to other declarations", () => {
+    expectVerificationFailure({ ...validMetadata, mimeType: "image/heif" });
+  });
+
   it("rejects a file outside the selected destination", () => {
     expectVerificationFailure({ ...validMetadata, parents: ["other-folder"] });
   });
