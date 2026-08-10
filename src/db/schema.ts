@@ -195,6 +195,13 @@ export const uploadFiles = pgTable(
     state: uploadFileState("state").notNull().default("CREATED"),
     providerFileId: text("provider_file_id"),
     encryptedProviderSessionRef: text("provider_session_ref"),
+    providerSessionExpiresAt: timestamp("provider_session_expires_at", {
+      withTimezone: true,
+    }),
+    sessionCreationLease: text("session_creation_lease"),
+    sessionCreationLeaseExpiresAt: timestamp("session_creation_lease_expires_at", {
+      withTimezone: true,
+    }),
     bytesConfirmed: bigint("bytes_confirmed", { mode: "number" }).notNull().default(0),
     attemptCount: integer("attempt_count").notNull().default(0),
     lastErrorCode: text("last_error_code"),
@@ -211,6 +218,9 @@ export const uploadFiles = pgTable(
     uniqueIndex("upload_files_destination_name_unique").on(table.destinationName),
     uniqueIndex("upload_files_provider_file_unique").on(table.providerFileId),
     index("upload_files_submission_state_idx").on(table.submissionId, table.state),
+    index("upload_files_session_lease_expiry_idx").on(
+      table.sessionCreationLeaseExpiresAt,
+    ),
     check("upload_files_declared_size_positive", sql`${table.declaredSizeBytes} > 0`),
     check("upload_files_bytes_confirmed_nonnegative", sql`${table.bytesConfirmed} >= 0`),
     check(
