@@ -43,6 +43,8 @@
 
 ## Remaining event-readiness checks
 
+- Live chunked upload using `Content-Range` through the new guest portal.
+- Two-file concurrency and provider-confirmed aggregate receipt on a real phone.
 - iOS Safari and Android Chrome upload behavior.
 - Video upload behavior for MP4 and MOV.
 - Interrupted upload logs and CORS response behavior.

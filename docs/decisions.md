@@ -141,3 +141,40 @@
   submission. The per-submission client file ID unique index remains the durable file idempotency
   boundary.
 - **Status:** Accepted for Milestone 1.
+
+## D-016: Idempotent resumable-session creation lease
+
+- **Decision:** Claim a two-minute database lease before requesting a Google Drive resumable
+  session. Persist the returned session URI only as AES-256-GCM ciphertext with upload-specific
+  authenticated data, and expose it only in a no-store response. Reuse an unexpired stored session
+  for repeated requests. Treat it as unusable after six days, conservatively inside Google's
+  documented approximately one-week lifetime.
+- **Reason:** Google session creation does not provide an application idempotency key. A durable
+  lease prevents concurrent HTTP retries from creating multiple usable provider sessions for one
+  file without holding a database transaction open across a network request.
+- **Status:** Accepted for the pilot. The lease and provider-expiry columns are additive migration
+  `0002_fancy_scorpion`.
+
+## D-017: Chunk confirmation and ambiguous browser reconciliation
+
+- **Decision:** Upload directly from the guest browser in configured chunks aligned to 256 KiB.
+  Advance progress only from Google's `Range` response or the server status endpoint. On an
+  ambiguous browser/CORS result, the server sends Google's documented empty status `PUT`, then
+  verifies the completed Drive resource by private app properties, generated name, exact size,
+  allowed MIME equivalence, and pinned parent folder.
+- **Reason:** Google documents `308 Resume Incomplete` plus `Range` as authoritative, `200/201` as
+  complete, and `404` as an expired session. Browser-reported bytes alone cannot prove delivery.
+- **References:** [Drive resumable uploads](https://developers.google.com/workspace/drive/api/guides/manage-uploads),
+  [Drive app-property search](https://developers.google.com/workspace/drive/api/guides/search-files).
+- **Status:** Implemented; live chunked CORS/device verification remains required before the guest
+  link is distributed.
+
+## D-018: Pilot cancellation boundary
+
+- **Decision:** Explicit guest cancellation aborts the browser request, removes the stored session
+  capability, and transitions a non-verifying file to `CANCELLED`. Do not call an undocumented
+  provider-session cancellation method.
+- **Reason:** Current Drive guidance documents status and expiry but not cancellation of a Drive v3
+  resumable session. The remaining provider session receives no further bytes from Syrax and ages
+  out; a final request already accepted by Google may still reconcile as completed.
+- **Status:** Accepted for the pilot; document this nuance in the event runbook.
