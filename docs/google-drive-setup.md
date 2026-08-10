@@ -36,9 +36,12 @@ email returned by Google.
 5. On `/admin/destination`, open Picker and deliberately choose existing
    `TJWeddingGuestUpload` folder.
 6. Confirm page shows `ACTIVE`, expected name, and verification timestamp.
-7. Inspect structured logs. They must not contain authorization code, access token, refresh token,
+7. Choose one disposable JPEG or PNG in the **Milestone 0 gate** panel and run the one-file test.
+8. Confirm the page says **Provider-confirmed upload complete** and the generated
+   `syrax-feasibility-*` file exists in the selected folder.
+9. Inspect structured logs. They must not contain authorization code, access token, refresh token,
    cookies, or selected folder ID.
-8. Inspect database using trusted admin tooling. `drive_connections.encrypted_refresh_token` must be
+10. Inspect database using trusted admin tooling. `drive_connections.encrypted_refresh_token` must be
    versioned ciphertext. `drive_destinations.provider_folder_id` must contain immutable selected ID.
 
 ## Reconnection
