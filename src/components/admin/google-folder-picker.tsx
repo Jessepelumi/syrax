@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { useCallback, useState } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 
 interface PickerConfig {
   accessToken: string;
@@ -26,9 +26,10 @@ async function readJson<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-export function GoogleFolderPicker({ expectedName }: { expectedName: string }) {
+export function GoogleFolderPicker() {
   const [scriptReady, setScriptReady] = useState(false);
   const [state, setState] = useState<PickerState>({ kind: "idle" });
+  const [folderName, setFolderName] = useState("");
 
   const saveFolder = useCallback(
     async (folderId: string) => {
@@ -57,6 +58,44 @@ export function GoogleFolderPicker({ expectedName }: { expectedName: string }) {
       window.location.reload();
     },
     [],
+  );
+
+  const createFolder = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setState({ kind: "loading" });
+
+      try {
+        const response = await fetch("/api/drive/destination/create", {
+          body: JSON.stringify({ name: folderName }),
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        const body = await readJson<
+          | { displayName: string; status: string; verifiedAt: string }
+          | ErrorEnvelope
+        >(response);
+
+        if (!response.ok || !("displayName" in body)) {
+          const errorBody = body as ErrorEnvelope;
+          throw new Error(errorBody.error?.message ?? "Folder creation failed.");
+        }
+
+        setState({
+          kind: "success",
+          message: `${body.displayName} created and selected. Reloading…`,
+        });
+        window.location.reload();
+      } catch (error) {
+        setState({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Folder creation failed.",
+        });
+      }
+    },
+    [folderName],
   );
 
   const openPicker = useCallback(async () => {
@@ -141,7 +180,7 @@ export function GoogleFolderPicker({ expectedName }: { expectedName: string }) {
   }, [saveFolder, scriptReady]);
 
   return (
-    <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="mt-8 space-y-6">
       <Script
         id="google-api"
         onError={() =>
@@ -151,20 +190,53 @@ export function GoogleFolderPicker({ expectedName }: { expectedName: string }) {
         src="https://apis.google.com/js/api.js"
         strategy="afterInteractive"
       />
-      <h2 className="text-lg font-semibold text-slate-950">Google Picker</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">
-        Required folder: <strong>{expectedName}</strong>. Folder ID stays server-side after
-        verification.
-      </p>
-      <button
-        className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700"
-        disabled={!scriptReady || state.kind === "loading"}
-        onClick={() => void openPicker()}
-        type="button"
-      >
-        {state.kind === "loading" ? "Checking…" : "Select Drive folder"}
-      </button>
-      <div aria-live="polite" className="mt-4 min-h-6 text-sm" role="status">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-950">Choose an existing folder</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Pick any Google Drive folder where the connected account can add files. Syrax stores its
+          immutable folder ID after verification.
+        </p>
+        <button
+          className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700"
+          disabled={!scriptReady || state.kind === "loading"}
+          onClick={() => void openPicker()}
+          type="button"
+        >
+          {state.kind === "loading" ? "Working…" : "Select Drive folder"}
+        </button>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-950">Create a new folder</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Create a folder in My Drive and immediately use it as the destination.
+        </p>
+        <form className="mt-5 space-y-4" onSubmit={createFolder}>
+          <div>
+            <label className="block text-sm font-semibold text-slate-800" htmlFor="new-folder-name">
+              Folder name
+            </label>
+            <input
+              className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-3"
+              disabled={state.kind === "loading"}
+              id="new-folder-name"
+              maxLength={255}
+              onChange={(event) => setFolderName(event.target.value)}
+              required
+              value={folderName}
+            />
+          </div>
+          <button
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-6 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={state.kind === "loading" || !folderName.trim()}
+            type="submit"
+          >
+            {state.kind === "loading" ? "Working…" : "Create and select folder"}
+          </button>
+        </form>
+      </div>
+
+      <div aria-live="polite" className="min-h-6 text-sm" role="status">
         {state.kind === "error" ? <p className="text-red-700">{state.message}</p> : null}
         {state.kind === "success" ? <p className="text-emerald-700">{state.message}</p> : null}
       </div>

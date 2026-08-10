@@ -9,13 +9,13 @@ import { hasJsonContentType, readJsonBody } from "@/lib/request-body";
 import { getAdminSessionFromRequest } from "@/server/auth/admin-session";
 import { hasExpectedOrigin } from "@/server/auth/request-security";
 import { DestinationValidationError } from "@/server/drive/destination";
-import { selectDriveDestination } from "@/server/drive/destination-service";
+import { createDriveDestination } from "@/server/drive/destination-service";
 
 export const runtime = "nodejs";
 
-const destinationRequestSchema = z
+const createDestinationRequestSchema = z
   .object({
-    folderId: z.string().trim().min(1).max(512),
+    name: z.string().trim().min(1).max(255),
   })
   .strict();
 
@@ -63,24 +63,25 @@ export async function POST(request: NextRequest): Promise<Response> {
     });
   }
 
-  const parsedBody = destinationRequestSchema.safeParse(body);
+  const parsedBody = createDestinationRequestSchema.safeParse(body);
 
   if (!parsedBody.success) {
     return errorResponse({
       code: "INVALID_REQUEST",
-      message: "Select one Google Drive folder.",
+      message: "Enter a valid folder name.",
       requestId,
       status: 400,
     });
   }
 
   try {
-    const destination = await selectDriveDestination(
+    const destination = await createDriveDestination(
       session.adminId,
-      parsedBody.data.folderId,
+      parsedBody.data.name,
     );
+
     getLogger().info({
-      event: "drive.destination.verified",
+      event: "drive.destination.created",
       requestId,
       adminId: session.adminId,
       destinationId: destination.id,
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         verifiedAt: destination.verifiedAt.toISOString(),
       },
       {
+        status: 201,
         headers: { "Cache-Control": "no-store", "X-Request-Id": requestId },
       },
     );
@@ -102,7 +104,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     getLogger().error({
-      event: "drive.destination.failed",
+      event: "drive.destination.create_failed",
       requestId,
       adminId: session.adminId,
       errorType: error instanceof Error ? error.name : "UnknownError",
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     return errorResponse({
       code: "DRIVE_NOT_CONNECTED",
-      message: "Google Drive destination could not be verified.",
+      message: "Google Drive folder could not be created.",
       requestId,
       retryable: true,
       status: 502,

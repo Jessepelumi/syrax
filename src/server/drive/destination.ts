@@ -2,7 +2,6 @@ export const GOOGLE_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder
 
 export type DestinationValidationCode =
   | "DESTINATION_INVALID"
-  | "DESTINATION_NAME_MISMATCH"
   | "DESTINATION_NOT_FOLDER"
   | "DESTINATION_NOT_WRITABLE"
   | "DESTINATION_TRASHED";
@@ -26,7 +25,6 @@ interface DriveFolderMetadata {
 
 export function validateDriveDestination(
   metadata: DriveFolderMetadata,
-  expectedName: string,
 ): { id: string; name: string } {
   if (!metadata.id || !metadata.name) {
     throw new DestinationValidationError("DESTINATION_INVALID");
@@ -42,10 +40,6 @@ export function validateDriveDestination(
 
   if (metadata.capabilities?.canAddChildren !== true) {
     throw new DestinationValidationError("DESTINATION_NOT_WRITABLE");
-  }
-
-  if (metadata.name !== expectedName) {
-    throw new DestinationValidationError("DESTINATION_NAME_MISMATCH");
   }
 
   return { id: metadata.id, name: metadata.name };
