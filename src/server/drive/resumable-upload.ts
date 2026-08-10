@@ -60,6 +60,16 @@ function isFeasibilityImageType(value: string): value is FeasibilityImageType {
   return FEASIBILITY_IMAGE_TYPES.some((mimeType) => mimeType === value);
 }
 
+function isEquivalentProviderMimeType(
+  declaredMimeType: FeasibilityImageType,
+  providerMimeType: string | null | undefined,
+): boolean {
+  return (
+    providerMimeType === declaredMimeType ||
+    (declaredMimeType === "image/heic" && providerMimeType === "image/heif")
+  );
+}
+
 export function createFeasibilityDestinationName(
   uploadId: string,
   mimeType: FeasibilityImageType,
@@ -117,7 +127,7 @@ export function validateFeasibilityUploadMetadata(input: {
     metadata.appProperties?.syraxUploadId !== input.uploadId ||
     !declaredMimeType ||
     !isFeasibilityImageType(declaredMimeType) ||
-    metadata.mimeType !== declaredMimeType ||
+    !isEquivalentProviderMimeType(declaredMimeType, metadata.mimeType) ||
     !declaredSize ||
     metadata.size !== declaredSize ||
     !/^\d+$/.test(declaredSize)

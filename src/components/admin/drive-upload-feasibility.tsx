@@ -198,7 +198,7 @@ export function DriveUploadFeasibility({ maxBytes }: { maxBytes: number }) {
           return;
         } catch {
           throw new Error(
-            "Direct browser upload returned an ambiguous network/CORS result, and server reconciliation found no completed file. Stop the feasibility gate.",
+            "Direct browser upload returned an ambiguous network/CORS result, and server reconciliation could not verify a completed file. Stop the feasibility gate.",
           );
         }
       }
