@@ -314,7 +314,7 @@ export function GuestUpload(props: GuestUploadProps) {
   return (
     <section className="mt-8" aria-labelledby="guest-upload-heading">
       <h2 className="text-2xl font-semibold text-slate-950" id="guest-upload-heading">
-        Add your photos
+        Add your files
       </h2>
       <p className="mt-2 text-sm leading-6 text-slate-600">
         Select up to {props.maxFilesPerSubmission} JPEG, PNG, or HEIC images. Two files upload at a time.
@@ -337,7 +337,7 @@ export function GuestUpload(props: GuestUploadProps) {
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-800" htmlFor="guest-files">
-              Wedding photos
+              Selected files
             </label>
             <input
               accept={props.allowedMimeTypes.join(",")}
@@ -370,7 +370,7 @@ export function GuestUpload(props: GuestUploadProps) {
           <div className="flex items-center justify-between gap-3 text-sm">
             <p className="font-semibold text-emerald-950">Upload progress</p>
             <p className="text-emerald-900">
-              {aggregateProgress.completedFiles}/{aggregateProgress.totalFiles} images uploaded
+              {aggregateProgress.completedFiles}/{aggregateProgress.totalFiles} files uploaded
             </p>
           </div>
           <progress

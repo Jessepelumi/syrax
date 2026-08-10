@@ -26,7 +26,7 @@ export default async function UploadPortalPage({
         Syrax Intake
       </Link>
       <p className="mt-8 text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
-        Wedding uploads
+        File uploads
       </p>
       <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
         {portal.name}

@@ -36,7 +36,7 @@ export function PortalManager({
   initialPortals,
 }: PortalManagerProps) {
   const [portals, setPortals] = useState(initialPortals);
-  const [name, setName] = useState("Share your wedding photos");
+  const [name, setName] = useState("Share your files with me");
   const [expiresAt, setExpiresAt] = useState(utcDateTimeValue(defaultExpiry));
   const [copyStatus, setCopyStatus] = useState<string>();
   const [error, setError] = useState<string>();
@@ -210,7 +210,7 @@ export function PortalManager({
           </p>
         ) : !canCreatePortal ? (
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Select a Drive destination before generating a new guest link. Existing portal history
+            Select a folder destination before generating a new guest link. Existing portal history
             remains available below.
           </p>
         ) : (
@@ -247,7 +247,7 @@ export function PortalManager({
               disabled={busy}
               type="submit"
             >
-              {busy ? "Creating…" : "Generate guest link"}
+              {busy ? "Creating…" : "Generate request link"}
             </button>
           </form>
         )}
