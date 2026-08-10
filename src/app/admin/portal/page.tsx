@@ -15,11 +15,6 @@ export default async function PortalPage() {
   }
 
   const destination = await getActiveDriveDestinationForAdmin(session.adminId);
-
-  if (!destination) {
-    redirect("/admin/destination");
-  }
-
   const portals = await listPortalsForAdmin(session.adminId);
 
   return (
@@ -28,28 +23,32 @@ export default async function PortalPage() {
         Syrax Intake
       </Link>
       <p className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">
-        Destination: {destination.displayName}
+        {destination
+          ? `Destination: ${destination.displayName}`
+          : "No current destination selected"}
       </p>
       <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
         Wedding guest portal
       </h1>
       <p className="mt-4 text-lg leading-8 text-slate-600">
-        Generate one high-entropy guest link. New submissions remain pinned to this verified
-        Drive destination even if a different folder is selected later.
+        Generate one high-entropy guest link. Each portal remains pinned to the Drive destination
+        selected when it was created.
       </p>
 
       <PortalManager
+        canCreatePortal={Boolean(destination)}
         defaultExpiry={getEnvironment().DEFAULT_PORTAL_EXPIRY}
         initialPortals={portals.map((portal) => ({
           id: portal.id,
           name: portal.name,
           status: portal.status,
           expiresAt: portal.expiresAt.toISOString(),
+          portalUrl: portal.portalUrl,
         }))}
       />
 
       <Link className="mt-10 inline-block text-sm font-semibold text-slate-600 underline" href="/admin/destination">
-        Change Drive destination
+        {destination ? "Change Drive destination" : "Select Drive destination"}
       </Link>
     </main>
   );

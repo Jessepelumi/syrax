@@ -110,6 +110,7 @@ export async function POST(request: NextRequest): Promise<Response> {
           name: created.portal.name,
           status: created.portal.status,
           expiresAt: created.portal.expiresAt.toISOString(),
+          portalUrl,
         },
         portalUrl,
       },
