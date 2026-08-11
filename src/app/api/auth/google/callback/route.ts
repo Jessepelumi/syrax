@@ -8,7 +8,10 @@ import {
   createAdminSessionToken,
   setAdminSessionCookie,
 } from "@/server/auth/admin-session";
-import { completeGoogleAuthorization } from "@/server/auth/google-oauth";
+import {
+  completeGoogleAuthorization,
+  GoogleOAuthError,
+} from "@/server/auth/google-oauth";
 import { matchesOAuthState, OAUTH_STATE_COOKIE } from "@/server/auth/oauth-state";
 
 export const runtime = "nodejs";
@@ -72,6 +75,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     getLogger().info({ event: "oauth.callback.completed", requestId, adminId: admin.adminId });
     return response;
   } catch (error) {
+    if (
+      error instanceof GoogleOAuthError &&
+      error.reason === "ADMIN_EMAIL_NOT_INVITED"
+    ) {
+      getLogger().warn({
+        event: "oauth.callback.rejected",
+        requestId,
+        reason: error.reason,
+      });
+      return redirectWithError("oauth_not_invited");
+    }
+
     getLogger().error({
       event: "oauth.callback.failed",
       requestId,

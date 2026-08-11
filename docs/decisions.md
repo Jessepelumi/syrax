@@ -231,3 +231,16 @@
   deletion tool. Restricting deletion to inactive portals prevents live links from disappearing by
   accident while allowing expired history to be cleaned up.
 - **Status:** Accepted with an explicit browser confirmation and server-side state enforcement.
+
+## D-024: Temporary beta administrator allowlist
+
+- **Decision:** Replace the single configured administrator email with a server-only,
+  comma-separated `BETA_ADMIN_EMAILS` allowlist. Google continues to provide authentication and the
+  Drive integration during the beta. Every invited Google identity receives its own administrator,
+  Drive connection, destinations, and portals. Do not expose the allowlist to the browser.
+- **Reason:** A narrow allowlist lets multiple known people test Syrax immediately while preserving
+  the existing ownership checks. It avoids opening self-service registration before email OTP,
+  identity linking, provider-neutral integrations, rate limits, and account lifecycle controls
+  exist.
+- **Status:** Temporary bridge. Replace it with the identity and integration architecture in
+  `docs/product-roadmap.md`; do not expand it into a permanent authorization system.

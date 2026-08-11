@@ -4,10 +4,10 @@ No credentials belong in this document or repository.
 
 ## Google Cloud
 
-1. Create dedicated Google Cloud project for wedding pilot.
+1. Create a dedicated Google Cloud project for the beta.
 2. Enable Google Drive API and Google Picker API.
-3. Configure OAuth consent screen. Keep app in testing mode during development and add host Google
-   account as test user.
+3. Configure OAuth consent screen. Keep the app in testing mode during development and add every
+   email in `BETA_ADMIN_EMAILS` as a test user.
 4. Declare only these app scopes:
    - `https://www.googleapis.com/auth/drive.file`
    - `openid`
@@ -23,8 +23,8 @@ No credentials belong in this document or repository.
 ## Local environment
 
 Populate `.env.local` from `.env.example`. `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, Picker API
-key, and project number must come from same Google Cloud project. `ADMIN_EMAIL` must match normalized
-email returned by Google.
+key, and project number must come from the same Google Cloud project. `BETA_ADMIN_EMAILS` is a
+comma-separated list of invited Google accounts; values are normalized and duplicates are rejected.
 
 ## Verification flow
 

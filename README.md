@@ -2,10 +2,10 @@
 
 Multi-Modal Storage Gateway and Ephemeral Transfer Platform.
 
-## Syrax Intake wedding pilot
+## Syrax Intake beta
 
-Wedding guest-upload portal for connecting one approved Google account, selecting or creating a
-Drive destination, generating a capability link, and receiving provider-confirmed guest images.
+File-request portal for invited users to connect a Google Drive account, select or create a Drive
+destination, generate a capability link, and receive provider-confirmed files.
 
 ### Requirements
 
@@ -46,8 +46,11 @@ Drive destination, generating a capability link, and receiving provider-confirme
 
 5. Verify `http://localhost:3000/api/health`, then open `http://localhost:3000/admin`.
 
-6. Connect the configured admin Google account, then select any writable Drive folder or create a
-   new destination from the admin page.
+6. Add each invited account to `BETA_ADMIN_EMAILS` and the Google OAuth test-user list. Connect an
+   invited Google account, then select any writable Drive folder or create a new destination.
+
+The longer-term identity and storage-integration plan is documented in
+[`docs/product-roadmap.md`](docs/product-roadmap.md).
 
 ### Checks
 

@@ -33,16 +33,20 @@ export function createGoogleOAuthClient() {
 }
 
 export function createGoogleAuthorizationUrl(state: string): string {
-  const environment = getEnvironment();
-
   return createGoogleOAuthClient().generateAuthUrl({
     access_type: "offline",
     include_granted_scopes: true,
-    login_hint: environment.ADMIN_EMAIL,
     prompt: "consent select_account",
     scope: [...GOOGLE_OAUTH_SCOPES],
     state,
   });
+}
+
+export function isInvitedBetaAdminEmail(
+  email: string,
+  invitedEmails: readonly string[],
+): boolean {
+  return invitedEmails.includes(email.trim().toLowerCase());
 }
 
 export async function completeGoogleAuthorization(code: string): Promise<{
@@ -68,8 +72,8 @@ export async function completeGoogleAuthorization(code: string): Promise<{
     throw new GoogleOAuthError("IDENTITY_INVALID");
   }
 
-  if (email !== environment.ADMIN_EMAIL) {
-    throw new GoogleOAuthError("ADMIN_EMAIL_MISMATCH");
+  if (!isInvitedBetaAdminEmail(email, environment.BETA_ADMIN_EMAILS)) {
+    throw new GoogleOAuthError("ADMIN_EMAIL_NOT_INVITED");
   }
 
   const grantedScopes = [...new Set((tokens.scope ?? "").split(/\s+/).filter(Boolean))].sort();

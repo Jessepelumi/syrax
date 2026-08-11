@@ -6,7 +6,7 @@ const validEnvironment = {
   NODE_ENV: "test",
   APP_BASE_URL: "http://localhost:3000",
   DATABASE_URL: "postgresql://user:password@localhost:5432/syrax",
-  ADMIN_EMAIL: " Host@Example.com ",
+  BETA_ADMIN_EMAILS: " Host@Example.com , Second@Example.com ",
   ADMIN_SESSION_SECRET: "a-session-secret-that-is-longer-than-32-characters",
   TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
   GOOGLE_CLIENT_ID: "client-id",
@@ -27,7 +27,10 @@ describe("parseEnvironment", () => {
   it("parses, normalizes, and coerces valid values", () => {
     const environment = parseEnvironment(validEnvironment);
 
-    expect(environment.ADMIN_EMAIL).toBe("host@example.com");
+    expect(environment.BETA_ADMIN_EMAILS).toEqual([
+      "host@example.com",
+      "second@example.com",
+    ]);
     expect(environment.MAX_FILES_PER_SUBMISSION).toBe(50);
     expect(environment.UPLOAD_CHUNK_SIZE_BYTES).toBe(8 * 1024 * 1024);
   });
@@ -59,6 +62,15 @@ describe("parseEnvironment", () => {
         ...validEnvironment,
         MAX_FILE_SIZE_BYTES: (Number.MAX_SAFE_INTEGER + 1).toString(),
         MAX_SUBMISSION_BYTES: (Number.MAX_SAFE_INTEGER + 1).toString(),
+      }),
+    ).toThrow();
+  });
+
+  it("rejects duplicate beta administrator emails after normalization", () => {
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        BETA_ADMIN_EMAILS: "host@example.com, HOST@example.com",
       }),
     ).toThrow();
   });
