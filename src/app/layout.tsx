@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Syrax Intake",
-  description: "Secure wedding guest uploads to a host-selected Google Drive folder.",
+  description: "Secure file requests delivered directly to a selected Google Drive folder.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

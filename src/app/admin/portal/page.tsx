@@ -31,8 +31,8 @@ export default async function PortalPage() {
         File request portal
       </h1>
       <p className="mt-4 text-lg leading-8 text-slate-600">
-        Generate one high-entropy request link. Each portal remains pinned to the Drive destination
-        selected when it was created.
+        Create a secure request link for people sending you files. Each portal remains pinned to
+        the Drive destination selected when it was created.
       </p>
 
       <PortalManager

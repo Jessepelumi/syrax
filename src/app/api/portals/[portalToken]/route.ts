@@ -43,7 +43,7 @@ export async function GET(
   if (!portal.destinationAvailable && portal.status === "OPEN") {
     return errorResponse({
       code: "DESTINATION_UNAVAILABLE",
-      message: "Uploads are temporarily unavailable. Contact the host.",
+      message: "Uploads are temporarily unavailable. Contact the person who shared this link.",
       requestId,
       retryable: true,
       status: 503,

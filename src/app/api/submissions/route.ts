@@ -40,14 +40,14 @@ const submissionRequestSchema = z
 function portalErrorResponse(error: PortalServiceError, requestId: string): Response {
   const mapped: Record<PortalServiceError["code"], { message: string; status: number }> = {
     DESTINATION_UNAVAILABLE: {
-      message: "Uploads are temporarily unavailable. Contact the host.",
+      message: "Uploads are temporarily unavailable. Contact the person who shared this link.",
       status: 503,
     },
     PORTAL_ALREADY_OPEN: { message: "Upload portal conflict.", status: 409 },
     PORTAL_CLOSED: { message: "This upload link is closed.", status: 409 },
     PORTAL_EXPIRED: { message: "This upload link has expired.", status: 410 },
     PORTAL_INVALID: { message: "This upload link is invalid.", status: 400 },
-    PORTAL_NOT_CLOSED: { message: "Upload portal conflict.", status: 409 },
+    PORTAL_NOT_DELETABLE: { message: "Upload portal conflict.", status: 409 },
     PORTAL_NOT_FOUND: { message: "This upload link is invalid.", status: 404 },
     PORTAL_STATE_CONFLICT: {
       message: "Portal status changed. Try again.",

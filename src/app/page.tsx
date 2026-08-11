@@ -10,8 +10,8 @@ export default function Home() {
         Receive files directly in your cloud storage
       </h1>
       <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-        Connect your preferred cloud folder destination, create a secure link, and receive
-        files all on the cloud.
+        Connect a Google Drive folder, create a secure request link, and receive files directly in
+        your cloud storage.
       </p>
       <div className="mt-10">
         <Link

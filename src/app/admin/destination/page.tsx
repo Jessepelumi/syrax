@@ -53,7 +53,7 @@ export default async function DestinationPage() {
       ) : (
         <p className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
           No destination is selected. Choose an existing folder or create one below before managing
-          guest portals.
+          request portals.
         </p>
       )}
 
