@@ -72,6 +72,25 @@ describe("validateDriveUploadMetadata", () => {
     ).toEqual({ providerFileId: metadata.id, sizeBytes: input.declaredSizeBytes });
   });
 
+  it("accepts provider-confirmed MP4 video metadata", () => {
+    expect(
+      validateDriveUploadMetadata({
+        ...input,
+        declaredMimeType: "video/mp4",
+        destinationName: "20260815_submission_file_clip.mp4",
+        metadata: {
+          ...metadata,
+          appProperties: {
+            ...metadata.appProperties,
+            syraxDeclaredMimeType: "video/mp4",
+          },
+          mimeType: "video/mp4",
+          name: "20260815_submission_file_clip.mp4",
+        },
+      }),
+    ).toEqual({ providerFileId: metadata.id, sizeBytes: input.declaredSizeBytes });
+  });
+
   it.each([
     { name: "wrong name", value: { ...metadata, name: "other.jpg" } },
     { name: "wrong folder", value: { ...metadata, parents: ["other"] } },

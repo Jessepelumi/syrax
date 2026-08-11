@@ -8,15 +8,20 @@ const environment = vi.hoisted(() => ({
 const mocks = vi.hoisted(() => ({
   deleteInactivePortalRecordForAdmin: vi.fn(),
   expirePortalRecord: vi.fn(),
+  getPortalForAdmin: vi.fn(),
   listPortalRecordsForAdmin: vi.fn(),
+  updatePortalExpiryRecordForAdmin: vi.fn(),
 }));
 
 vi.mock("@/lib/env", () => ({
   getEnvironment: () => ({
     ...environment,
-    MAX_FILE_SIZE_BYTES: 100,
+    MAX_IMAGE_BYTES_PER_SUBMISSION: 300,
+    MAX_IMAGE_FILE_SIZE_BYTES: 100,
     MAX_FILES_PER_SUBMISSION: 10,
     MAX_SUBMISSION_BYTES: 1_000,
+    MAX_VIDEO_BYTES_PER_SUBMISSION: 700,
+    MAX_VIDEO_FILE_SIZE_BYTES: 200,
   }),
 }));
 
@@ -25,15 +30,17 @@ vi.mock("@/server/portals/portal-repository", () => ({
   deleteInactivePortalRecordForAdmin: mocks.deleteInactivePortalRecordForAdmin,
   expirePortalRecord: mocks.expirePortalRecord,
   findPortalByPublicTokenHash: vi.fn(),
-  getPortalForAdmin: vi.fn(),
+  getPortalForAdmin: mocks.getPortalForAdmin,
   listPortalRecordsForAdmin: mocks.listPortalRecordsForAdmin,
   transitionPortalRecordForAdmin: vi.fn(),
+  updatePortalExpiryRecordForAdmin: mocks.updatePortalExpiryRecordForAdmin,
 }));
 
 import {
   deleteInactivePortalForAdmin,
   listPortalsForAdmin,
   PortalServiceError,
+  updatePortalExpiryForAdmin,
 } from "@/server/portals/portal-service";
 import { hashPortalToken } from "@/server/portals/portal-token";
 import { createPortalTokenVault } from "@/server/portals/portal-token-vault";
@@ -54,9 +61,13 @@ function portalRecord(status: "OPEN" | "CLOSED" | "EXPIRED") {
     encryptedPublicToken,
     expiresAt: new Date("2099-08-31T23:59:59.000Z"),
     id: "portal-id",
-    maxFileSizeBytes: 100,
+    legacyMaxFileSizeBytes: 200,
+    maxImageBytesPerSubmission: 300,
+    maxImageFileSizeBytes: 100,
     maxFilesPerSubmission: 10,
     maxSubmissionBytes: 1_000,
+    maxVideoBytesPerSubmission: 700,
+    maxVideoFileSizeBytes: 200,
     name: "Wedding photos",
     publicTokenHash,
     status,
@@ -101,5 +112,43 @@ describe("admin portal links", () => {
     await expect(
       deleteInactivePortalForAdmin({ adminId: "admin-id", portalId: "portal-id" }),
     ).rejects.toEqual(new PortalServiceError("PORTAL_NOT_DELETABLE"));
+  });
+
+  it("updates an owned unexpired portal and retains its admin link", async () => {
+    const updatedRecord = {
+      ...portalRecord("OPEN"),
+      expiresAt: new Date("2099-09-15T12:30:00.000Z"),
+    };
+    mocks.updatePortalExpiryRecordForAdmin.mockResolvedValue({
+      kind: "updated",
+      portal: updatedRecord,
+    });
+    mocks.getPortalForAdmin.mockResolvedValue(updatedRecord);
+
+    const updated = await updatePortalExpiryForAdmin({
+      adminId: "admin-id",
+      expiresAt: updatedRecord.expiresAt,
+      portalId: "portal-id",
+    });
+
+    expect(updated.expiresAt).toEqual(updatedRecord.expiresAt);
+    expect(updated.portalUrl).toBe(`https://syrax.example/upload/${publicToken}`);
+    expect(mocks.updatePortalExpiryRecordForAdmin).toHaveBeenCalledWith({
+      actorId: "admin-id",
+      expiresAt: updatedRecord.expiresAt,
+      portalId: "portal-id",
+    });
+  });
+
+  it("does not allow an expired portal to be revived by editing its expiry", async () => {
+    mocks.updatePortalExpiryRecordForAdmin.mockResolvedValue({ kind: "expired" });
+
+    await expect(
+      updatePortalExpiryForAdmin({
+        adminId: "admin-id",
+        expiresAt: new Date("2099-09-15T12:30:00.000Z"),
+        portalId: "portal-id",
+      }),
+    ).rejects.toEqual(new PortalServiceError("PORTAL_EXPIRED"));
   });
 });

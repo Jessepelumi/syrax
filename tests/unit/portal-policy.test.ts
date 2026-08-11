@@ -9,10 +9,13 @@ import {
 } from "@/server/portals/portal-policy";
 
 const policy = {
-  allowedMimeTypes: ["image/jpeg", "image/heic", "image/png"],
-  maxFileSizeBytes: 10_000,
+  allowedMimeTypes: ["image/jpeg", "image/heic", "image/png", "video/mp4"],
+  maxImageBytesPerSubmission: 15_000,
+  maxImageFileSizeBytes: 10_000,
   maxFilesPerSubmission: 3,
-  maxSubmissionBytes: 20_000,
+  maxSubmissionBytes: 30_000,
+  maxVideoBytesPerSubmission: 15_000,
+  maxVideoFileSizeBytes: 15_000,
 } satisfies PortalSubmissionPolicy;
 
 const jpeg = {
@@ -48,7 +51,12 @@ describe("validateSubmissionPlan", () => {
       },
     ]);
 
-    expect(result).toEqual({ fileCount: 2, totalDeclaredBytes: 10_000 });
+    expect(result).toEqual({
+      fileCount: 2,
+      imageDeclaredBytes: 10_000,
+      totalDeclaredBytes: 10_000,
+      videoDeclaredBytes: 0,
+    });
   });
 
   it("rejects empty and over-limit file lists", () => {
@@ -75,11 +83,55 @@ describe("validateSubmissionPlan", () => {
     expectPolicyError("FILE_TOO_LARGE", [{ ...jpeg, sizeBytes: 10_001 }]);
   });
 
-  it("rejects an aggregate larger than the submission limit", () => {
-    expectPolicyError("SUBMISSION_TOO_LARGE", [
+  it("uses the larger video limit only for video MIME types", () => {
+    expect(
+      validateSubmissionPlan(policy, [
+        {
+          clientFileId: "browser-video-1",
+          mimeType: "video/mp4",
+          name: "clip.mp4",
+          sizeBytes: 15_000,
+        },
+      ]),
+    ).toEqual({
+      fileCount: 1,
+      imageDeclaredBytes: 0,
+      totalDeclaredBytes: 15_000,
+      videoDeclaredBytes: 15_000,
+    });
+
+    expectPolicyError("FILE_TOO_LARGE", [
+      {
+        clientFileId: "browser-video-1",
+        mimeType: "video/mp4",
+        name: "clip.mp4",
+        sizeBytes: 15_001,
+      },
+    ]);
+  });
+
+  it("rejects photos that exceed the photo category budget", () => {
+    expectPolicyError("IMAGE_SUBMISSION_TOO_LARGE", [
       { ...jpeg, sizeBytes: 10_000 },
-      { ...jpeg, clientFileId: "browser-file-2", sizeBytes: 10_000 },
-      { ...jpeg, clientFileId: "browser-file-3", sizeBytes: 1 },
+      { ...jpeg, clientFileId: "browser-file-2", sizeBytes: 5_001 },
+    ]);
+  });
+
+  it("rejects videos that exceed the video category budget", () => {
+    expectPolicyError("VIDEO_SUBMISSION_TOO_LARGE", [
+      {
+        ...jpeg,
+        mimeType: "video/mp4",
+        name: "clip.mp4",
+        sizeBytes: 10_000,
+      },
+      {
+        ...jpeg,
+        clientFileId: "browser-file-2",
+        mimeType: "video/mp4",
+        name: "another-clip.mp4",
+        sizeBytes: 5_001,
+      },
     ]);
   });
 
@@ -98,7 +150,8 @@ describe("validateSubmissionPlan", () => {
   it("rejects internally inconsistent portal limits", () => {
     expectPolicyError("FILE_METADATA_INVALID", [jpeg], {
       ...policy,
-      maxSubmissionBytes: policy.maxFileSizeBytes - 1,
+      maxSubmissionBytes:
+        policy.maxImageBytesPerSubmission + policy.maxVideoBytesPerSubmission - 1,
     });
   });
 });

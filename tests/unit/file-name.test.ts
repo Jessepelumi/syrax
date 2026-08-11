@@ -49,4 +49,18 @@ describe("createDestinationFileName", () => {
     expect(Array.from(result.destinationName).length).toBeLessThanOrEqual(240);
     expect(result.destinationName.endsWith(".jpg")).toBe(true);
   });
+
+  it("derives a safe MOV extension for QuickTime video", () => {
+    const result = createDestinationFileName({
+      fileId: "file_abcdefgh",
+      mimeType: "video/quicktime",
+      originalName: "First dance.exe",
+      submissionId: "submission_12345678",
+      uploadedAt: new Date("2026-08-15T00:00:00.000Z"),
+    });
+
+    expect(result.destinationName).toBe(
+      "20260815_12345678_abcdefgh_First dance.mov",
+    );
+  });
 });
