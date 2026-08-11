@@ -27,7 +27,7 @@ describe("upload session vault", () => {
   it("rejects tampering and a different key", () => {
     const vault = createUploadSessionVault(key);
     const parts = vault.encrypt(sessionUrl).split(".");
-    parts[2] = `${parts[2] === "A" ? "B" : "A"}${parts[2].slice(1)}`;
+    parts[2] = `${parts[2].startsWith("A") ? "B" : "A"}${parts[2].slice(1)}`;
 
     expect(() => vault.decrypt(parts.join("."))).toThrow(UploadSessionVaultError);
     expect(() =>
