@@ -41,6 +41,44 @@ describe("PortalManager active links", () => {
     expect(screen.getByRole("button", { name: "Copy request link" })).toBeEnabled();
   });
 
+  it("edits the expiry of an open request link", async () => {
+    const nextLocalExpiry = "2099-09-15T12:30";
+    const nextExpiry = new Date(nextLocalExpiry).toISOString();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          portal: { ...portal("OPEN"), expiresAt: nextExpiry },
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      createElement(PortalManager, {
+        canCreatePortal: true,
+        defaultExpiry,
+        initialPortals: [portal("OPEN")],
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit expiry" }));
+    fireEvent.change(screen.getByLabelText("New expiry (your local time)"), {
+      target: { value: nextLocalExpiry },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save expiry" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(fetchMock).toHaveBeenCalledWith("/api/admin/portals/portal-id", {
+      body: JSON.stringify({ expiresAt: nextExpiry }),
+      headers: { "Content-Type": "application/json" },
+      method: "PATCH",
+    });
+    expect(
+      screen.queryByLabelText("New expiry (your local time)"),
+    ).not.toBeInTheDocument();
+  });
+
   it("restores the same link after reopening a closed portal", async () => {
     vi.stubGlobal(
       "fetch",
@@ -137,6 +175,7 @@ describe("PortalManager active links", () => {
     expect(
       screen.queryByRole("button", { name: "Reopen retained link" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit expiry" })).not.toBeInTheDocument();
   });
 
   it("keeps closed portal history manageable without a selected destination", () => {
