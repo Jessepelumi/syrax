@@ -392,7 +392,7 @@ export function GuestUpload(props: GuestUploadProps) {
         {formatBytes(props.maxVideoFileSizeBytes)}. Selection capacity is {" "}
         {formatBytes(props.maxImageBytesPerSubmission)} for photos and {" "}
         {formatBytes(props.maxVideoBytesPerSubmission)} for videos. Accepted formats: JPEG, PNG,
-        HEIC, MP4, and MOV. Two files upload at a time.
+        HEIC, MP4, and MOV.
       </p>
 
       {!submissionId ? (
