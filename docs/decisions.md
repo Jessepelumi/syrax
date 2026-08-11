@@ -222,12 +222,12 @@
 - **Status:** Accepted. Selecting or creating a folder atomically clears the previous selection and
   marks the new destination current.
 
-## D-023: Closed portal deletion
+## D-023: Inactive portal deletion
 
-- **Decision:** Authenticated admins may permanently delete only `CLOSED` portals. Deletion removes
-  their Syrax submissions, upload-file records, and stored capability, but never deletes files from
-  Google Drive. A redacted deletion audit event is retained.
+- **Decision:** Authenticated admins may permanently delete `CLOSED` or `EXPIRED` portals. Deletion
+  removes their Syrax submissions, upload-file records, and stored capability, but never deletes
+  files from Google Drive. A redacted deletion audit event is retained.
 - **Reason:** Closed links need a safe cleanup path without broadening Syrax into a Drive file
-  deletion tool. Restricting deletion to closed portals prevents live links from disappearing by
-  accident.
+  deletion tool. Restricting deletion to inactive portals prevents live links from disappearing by
+  accident while allowing expired history to be cleaned up.
 - **Status:** Accepted with an explicit browser confirmation and server-side state enforcement.
