@@ -104,7 +104,9 @@ export function GuestUpload(props: GuestUploadProps) {
       }
 
       if (!allowedMimeTypes.has(file.type)) {
-        setGlobalError(`${file.name} is not a supported JPEG, PNG, or HEIC image.`);
+        setGlobalError(
+          `${file.name} is not a supported file type. Choose a JPEG, PNG, or HEIC file.`,
+        );
         continue;
       }
 
@@ -317,7 +319,8 @@ export function GuestUpload(props: GuestUploadProps) {
         Add your files
       </h2>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        Select up to {props.maxFilesPerSubmission} JPEG, PNG, or HEIC images. Two files upload at a time.
+        Select up to {props.maxFilesPerSubmission} files. Accepted formats: JPEG, PNG, and HEIC. Two
+        files upload at a time.
       </p>
 
       {!submissionId ? (
@@ -337,7 +340,7 @@ export function GuestUpload(props: GuestUploadProps) {
           </div>
           <div>
             <label className="block text-sm font-semibold text-slate-800" htmlFor="guest-files">
-              Selected files
+              Choose files
             </label>
             <input
               accept={props.allowedMimeTypes.join(",")}
@@ -374,7 +377,7 @@ export function GuestUpload(props: GuestUploadProps) {
             </p>
           </div>
           <progress
-            aria-label={`${aggregateProgress.completedFiles} of ${aggregateProgress.totalFiles} images uploaded`}
+            aria-label={`${aggregateProgress.completedFiles} of ${aggregateProgress.totalFiles} files uploaded`}
             className="mt-3 h-3 w-full accent-emerald-700"
             max={aggregateProgress.totalBytes}
             value={aggregateProgress.confirmedBytes}
@@ -383,22 +386,30 @@ export function GuestUpload(props: GuestUploadProps) {
       ) : null}
 
       {items.length > 0 ? (
-        <ul className="mt-5 space-y-3">
-          {items.map((item) => (
-            <FileRow
-              item={item}
-              key={item.clientFileId}
-              locked={Boolean(submissionId)}
-              onCancel={() => void cancelItem(item)}
-              onRemove={() =>
-                setItems((current) =>
-                  current.filter((candidate) => candidate.clientFileId !== item.clientFileId),
-                )
-              }
-              onRetry={() => void retryItem(item)}
-            />
-          ))}
-        </ul>
+        <details className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-900 marker:text-slate-500">
+            File details
+            <span className="ml-2 font-normal text-slate-600">
+              ({items.length} {items.length === 1 ? "file" : "files"} selected)
+            </span>
+          </summary>
+          <ul className="max-h-80 space-y-3 overflow-y-auto border-t border-slate-200 p-3">
+            {items.map((item) => (
+              <FileRow
+                item={item}
+                key={item.clientFileId}
+                locked={Boolean(submissionId)}
+                onCancel={() => void cancelItem(item)}
+                onRemove={() =>
+                  setItems((current) =>
+                    current.filter((candidate) => candidate.clientFileId !== item.clientFileId),
+                  )
+                }
+                onRetry={() => void retryItem(item)}
+              />
+            ))}
+          </ul>
+        </details>
       ) : null}
 
       {!submissionId && items.length > 0 ? (
@@ -408,7 +419,7 @@ export function GuestUpload(props: GuestUploadProps) {
           onClick={() => void startUpload()}
           type="button"
         >
-          {running ? "Preparing…" : `Upload ${items.length} photo${items.length === 1 ? "" : "s"}`}
+          {running ? "Preparing…" : `Upload ${items.length} file${items.length === 1 ? "" : "s"}`}
         </button>
       ) : null}
 
@@ -416,10 +427,10 @@ export function GuestUpload(props: GuestUploadProps) {
         <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5" aria-live="polite">
           <h2 className="font-semibold text-emerald-950">
             {completedCount === items.length
-              ? "All photos delivered"
+              ? "All files delivered"
               : completedCount > 0
-                ? "Some photos delivered"
-                : "No photos were delivered"}
+                ? "Some files delivered"
+                : "No files were delivered"}
           </h2>
           <p className="mt-2 text-sm text-emerald-900">
             Provider-confirmed files: {completedCount} of {items.length}
