@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gt, isNotNull, lte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, lte, ne, sql } from "drizzle-orm";
 
 import { getDatabase } from "@/db/client";
 import {
@@ -35,7 +35,7 @@ export type TransitionPortalRecordResult =
 
 export type DeletePortalRecordResult =
   | { kind: "deleted" }
-  | { kind: "not_closed" }
+  | { kind: "not_deletable" }
   | { kind: "not_found" };
 
 const portalRecordSelection = {
@@ -357,7 +357,7 @@ export async function transitionPortalRecordForAdmin(input: {
   });
 }
 
-export async function deleteClosedPortalRecordForAdmin(input: {
+export async function deleteInactivePortalRecordForAdmin(input: {
   actorId: string;
   portalId: string;
 }): Promise<DeletePortalRecordResult> {
@@ -386,8 +386,8 @@ export async function deleteClosedPortalRecordForAdmin(input: {
       return { kind: "not_found" };
     }
 
-    if (owned.status !== "CLOSED") {
-      return { kind: "not_closed" };
+    if (owned.status !== "CLOSED" && owned.status !== "EXPIRED") {
+      return { kind: "not_deletable" };
     }
 
     const deletedSubmissions = await transaction
@@ -396,11 +396,16 @@ export async function deleteClosedPortalRecordForAdmin(input: {
       .returning({ id: submissions.id });
     const [deleted] = await transaction
       .delete(portals)
-      .where(and(eq(portals.id, input.portalId), eq(portals.status, "CLOSED")))
+      .where(
+        and(
+          eq(portals.id, input.portalId),
+          inArray(portals.status, ["CLOSED", "EXPIRED"]),
+        ),
+      )
       .returning({ id: portals.id });
 
     if (!deleted) {
-      return { kind: "not_closed" };
+      return { kind: "not_deletable" };
     }
 
     await transaction.insert(auditEvents).values({
@@ -410,7 +415,10 @@ export async function deleteClosedPortalRecordForAdmin(input: {
       eventType: "portal.deleted",
       resourceType: "portal",
       resourceId: input.portalId,
-      metadata: { deletedSubmissionCount: deletedSubmissions.length },
+      metadata: {
+        deletedSubmissionCount: deletedSubmissions.length,
+        previousStatus: owned.status,
+      },
     });
 
     return { kind: "deleted" };

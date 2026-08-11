@@ -8,7 +8,7 @@ import { hasJsonContentType, readJsonBody } from "@/lib/request-body";
 import { getAdminSessionFromRequest } from "@/server/auth/admin-session";
 import { hasExpectedOrigin } from "@/server/auth/request-security";
 import {
-  deleteClosedPortalForAdmin,
+  deleteInactivePortalForAdmin,
   PortalServiceError,
   transitionPortalForAdmin,
 } from "@/server/portals/portal-service";
@@ -193,7 +193,7 @@ export async function DELETE(
   }
 
   try {
-    await deleteClosedPortalForAdmin({ adminId: session.adminId, portalId });
+    await deleteInactivePortalForAdmin({ adminId: session.adminId, portalId });
 
     getLogger().info({
       event: "portal.deleted",
@@ -220,10 +220,10 @@ export async function DELETE(
         });
       }
 
-      if (error.code === "PORTAL_NOT_CLOSED") {
+      if (error.code === "PORTAL_NOT_DELETABLE") {
         return errorResponse({
           code: error.code,
-          message: "Close the portal before deleting it.",
+          message: "Only closed or expired portals can be deleted.",
           requestId,
           status: 409,
         });

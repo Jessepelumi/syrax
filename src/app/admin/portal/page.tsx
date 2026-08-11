@@ -28,11 +28,11 @@ export default async function PortalPage() {
           : "No current destination selected"}
       </p>
       <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
-        Wedding guest portal
+        File request portal
       </h1>
       <p className="mt-4 text-lg leading-8 text-slate-600">
-        Generate one high-entropy guest link. Each portal remains pinned to the Drive destination
-        selected when it was created.
+        Create a secure request link for people sending you files. Each portal remains pinned to
+        the Drive destination selected when it was created.
       </p>
 
       <PortalManager

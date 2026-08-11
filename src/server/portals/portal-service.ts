@@ -8,7 +8,7 @@ import { PILOT_ALLOWED_MIME_TYPES } from "@/lib/mime";
 import { normalizeDisplayText } from "@/lib/text";
 import {
   createPortalRecordForAdmin,
-  deleteClosedPortalRecordForAdmin,
+  deleteInactivePortalRecordForAdmin,
   expirePortalRecord,
   findPortalByPublicTokenHash,
   getPortalForAdmin,
@@ -36,7 +36,7 @@ export type PortalServiceErrorCode =
   | "PORTAL_CLOSED"
   | "PORTAL_EXPIRED"
   | "PORTAL_INVALID"
-  | "PORTAL_NOT_CLOSED"
+  | "PORTAL_NOT_DELETABLE"
   | "PORTAL_NOT_FOUND"
   | "PORTAL_STATE_CONFLICT";
 
@@ -221,11 +221,11 @@ export async function listPortalsForAdmin(adminId: string): Promise<AdminPortal[
   return Promise.all(records.map(normalizeAdminExpiry));
 }
 
-export async function deleteClosedPortalForAdmin(input: {
+export async function deleteInactivePortalForAdmin(input: {
   adminId: string;
   portalId: string;
 }): Promise<void> {
-  const result = await deleteClosedPortalRecordForAdmin({
+  const result = await deleteInactivePortalRecordForAdmin({
     actorId: input.adminId,
     portalId: input.portalId,
   });
@@ -234,8 +234,8 @@ export async function deleteClosedPortalForAdmin(input: {
     throw new PortalServiceError("PORTAL_NOT_FOUND");
   }
 
-  if (result.kind === "not_closed") {
-    throw new PortalServiceError("PORTAL_NOT_CLOSED");
+  if (result.kind === "not_deletable") {
+    throw new PortalServiceError("PORTAL_NOT_DELETABLE");
   }
 }
 

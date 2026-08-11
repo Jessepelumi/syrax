@@ -36,7 +36,7 @@ export function PortalManager({
   initialPortals,
 }: PortalManagerProps) {
   const [portals, setPortals] = useState(initialPortals);
-  const [name, setName] = useState("Share your wedding photos");
+  const [name, setName] = useState("Share your files with me");
   const [expiresAt, setExpiresAt] = useState(utcDateTimeValue(defaultExpiry));
   const [copyStatus, setCopyStatus] = useState<string>();
   const [error, setError] = useState<string>();
@@ -149,7 +149,7 @@ export function PortalManager({
     }
   }
 
-  async function copyGuestLink(portalUrl: string) {
+  async function copyRequestLink(portalUrl: string) {
     try {
       await navigator.clipboard.writeText(portalUrl);
       setCopyStatus("Copied");
@@ -162,7 +162,7 @@ export function PortalManager({
     <div className="mt-8 space-y-8">
       {openPortal ? (
         <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-          <h2 className="font-semibold text-emerald-950">Active guest link</h2>
+          <h2 className="font-semibold text-emerald-950">Active request link</h2>
           <p className="mt-2 text-sm leading-6 text-emerald-900">
             This link remains available here while the portal is open, including after a reload or
             reopening the portal.
@@ -180,10 +180,10 @@ export function PortalManager({
               />
               <button
                 className="mt-3 min-h-11 rounded-full bg-emerald-900 px-5 text-sm font-semibold text-white disabled:opacity-60"
-                onClick={() => void copyGuestLink(openPortal.portalUrl!)}
+                onClick={() => void copyRequestLink(openPortal.portalUrl!)}
                 type="button"
               >
-                Copy guest link
+                Copy request link
               </button>
               {copyStatus ? <span className="ml-3 text-sm text-emerald-900" role="status">{copyStatus}</span> : null}
             </>
@@ -203,15 +203,15 @@ export function PortalManager({
       ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-950">Create guest link</h2>
+        <h2 className="text-xl font-semibold text-slate-950">Create request link</h2>
         {openPortal ? (
           <p className="mt-3 text-sm leading-6 text-slate-600">
             One portal is already open. Close it below before generating a replacement link.
           </p>
         ) : !canCreatePortal ? (
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Select a Drive destination before generating a new guest link. Existing portal history
-            remains available below.
+            Select a folder destination before generating a new request link. Existing portal
+            history remains available below.
           </p>
         ) : (
           <form className="mt-5 space-y-5" onSubmit={createPortal}>
@@ -247,7 +247,7 @@ export function PortalManager({
               disabled={busy}
               type="submit"
             >
-              {busy ? "Creating…" : "Generate guest link"}
+              {busy ? "Creating…" : "Generate request link"}
             </button>
           </form>
         )}
@@ -282,16 +282,18 @@ export function PortalManager({
                     Close portal
                   </button>
                 ) : null}
-                {portal.status === "CLOSED" ? (
+                {portal.status === "CLOSED" || portal.status === "EXPIRED" ? (
                   <div className="mt-4 flex flex-wrap gap-4">
-                    <button
-                      className="text-sm font-semibold text-emerald-800 underline disabled:opacity-60"
-                      disabled={busy}
-                      onClick={() => changeStatus(portal.id, "OPEN")}
-                      type="button"
-                    >
-                      Reopen retained link
-                    </button>
+                    {portal.status === "CLOSED" ? (
+                      <button
+                        className="text-sm font-semibold text-emerald-800 underline disabled:opacity-60"
+                        disabled={busy}
+                        onClick={() => changeStatus(portal.id, "OPEN")}
+                        type="button"
+                      >
+                        Reopen retained link
+                      </button>
+                    ) : null}
                     <button
                       className="text-sm font-semibold text-red-700 underline disabled:opacity-60"
                       disabled={busy}

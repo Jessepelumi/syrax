@@ -6,7 +6,7 @@ const environment = vi.hoisted(() => ({
 }));
 
 const mocks = vi.hoisted(() => ({
-  deleteClosedPortalRecordForAdmin: vi.fn(),
+  deleteInactivePortalRecordForAdmin: vi.fn(),
   expirePortalRecord: vi.fn(),
   listPortalRecordsForAdmin: vi.fn(),
 }));
@@ -22,7 +22,7 @@ vi.mock("@/lib/env", () => ({
 
 vi.mock("@/server/portals/portal-repository", () => ({
   createPortalRecordForAdmin: vi.fn(),
-  deleteClosedPortalRecordForAdmin: mocks.deleteClosedPortalRecordForAdmin,
+  deleteInactivePortalRecordForAdmin: mocks.deleteInactivePortalRecordForAdmin,
   expirePortalRecord: mocks.expirePortalRecord,
   findPortalByPublicTokenHash: vi.fn(),
   getPortalForAdmin: vi.fn(),
@@ -31,7 +31,7 @@ vi.mock("@/server/portals/portal-repository", () => ({
 }));
 
 import {
-  deleteClosedPortalForAdmin,
+  deleteInactivePortalForAdmin,
   listPortalsForAdmin,
   PortalServiceError,
 } from "@/server/portals/portal-service";
@@ -44,7 +44,7 @@ const encryptedPublicToken = createPortalTokenVault(
   environment.TOKEN_ENCRYPTION_KEY,
 ).encrypt(publicToken, publicTokenHash);
 
-function portalRecord(status: "OPEN" | "CLOSED") {
+function portalRecord(status: "OPEN" | "CLOSED" | "EXPIRED") {
   return {
     allowedMimeTypes: ["image/jpeg"],
     connectionStatus: "ACTIVE" as const,
@@ -81,23 +81,25 @@ describe("admin portal links", () => {
     expect(portal.portalUrl).toBeUndefined();
   });
 
-  it("deletes a portal when the repository confirms it is closed", async () => {
-    mocks.deleteClosedPortalRecordForAdmin.mockResolvedValue({ kind: "deleted" });
+  it("deletes a portal when the repository confirms it is inactive", async () => {
+    mocks.deleteInactivePortalRecordForAdmin.mockResolvedValue({ kind: "deleted" });
 
     await expect(
-      deleteClosedPortalForAdmin({ adminId: "admin-id", portalId: "portal-id" }),
+      deleteInactivePortalForAdmin({ adminId: "admin-id", portalId: "portal-id" }),
     ).resolves.toBeUndefined();
-    expect(mocks.deleteClosedPortalRecordForAdmin).toHaveBeenCalledWith({
+    expect(mocks.deleteInactivePortalRecordForAdmin).toHaveBeenCalledWith({
       actorId: "admin-id",
       portalId: "portal-id",
     });
   });
 
-  it("rejects deletion unless the portal is closed", async () => {
-    mocks.deleteClosedPortalRecordForAdmin.mockResolvedValue({ kind: "not_closed" });
+  it("rejects deletion unless the portal is closed or expired", async () => {
+    mocks.deleteInactivePortalRecordForAdmin.mockResolvedValue({
+      kind: "not_deletable",
+    });
 
     await expect(
-      deleteClosedPortalForAdmin({ adminId: "admin-id", portalId: "portal-id" }),
-    ).rejects.toEqual(new PortalServiceError("PORTAL_NOT_CLOSED"));
+      deleteInactivePortalForAdmin({ adminId: "admin-id", portalId: "portal-id" }),
+    ).rejects.toEqual(new PortalServiceError("PORTAL_NOT_DELETABLE"));
   });
 });

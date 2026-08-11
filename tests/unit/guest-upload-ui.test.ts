@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { GuestUpload } from "@/components/upload/guest-upload";
 
 describe("GuestUpload aggregate progress", () => {
-  it("shows one progress bar and a completed-image count for the full selection", () => {
+  it("collapses selected-file details beneath one aggregate progress bar", () => {
     render(
       createElement(GuestUpload, {
         allowedMimeTypes: ["image/jpeg"],
@@ -21,7 +21,7 @@ describe("GuestUpload aggregate progress", () => {
       }),
     );
 
-    fireEvent.change(screen.getByLabelText("Wedding photos"), {
+    fireEvent.change(screen.getByLabelText("Choose files"), {
       target: {
         files: [
           new File([new Uint8Array(100)], "one.jpg", { type: "image/jpeg" }),
@@ -30,9 +30,27 @@ describe("GuestUpload aggregate progress", () => {
       },
     });
 
-    expect(screen.getByText("0/2 images uploaded")).toBeVisible();
+    expect(screen.getByText("0/2 files uploaded")).toBeVisible();
     expect(screen.getAllByRole("progressbar")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Upload 2 files" })).toBeVisible();
+
+    const summary = screen.getByText("File details", { exact: false });
+    const details = summary.closest("details");
+
+    expect(details).not.toHaveAttribute("open");
+    expect(screen.getByText("one.jpg")).not.toBeVisible();
+    expect(screen.getByText("two.jpg")).not.toBeVisible();
+
+    fireEvent.click(summary);
+
+    expect(details).toHaveAttribute("open");
     expect(screen.getByText("one.jpg")).toBeVisible();
     expect(screen.getByText("two.jpg")).toBeVisible();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+
+    expect(screen.queryByText("one.jpg")).not.toBeInTheDocument();
+    expect(screen.getByText("(1 file selected)")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Upload 1 file" })).toBeVisible();
   });
 });

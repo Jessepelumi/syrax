@@ -28,10 +28,10 @@ export default async function AdminPage({
         Syrax Intake
       </Link>
       <h1 className="mt-8 text-4xl font-semibold tracking-tight text-slate-950">
-        Connect host Google account
+        Connect your Google account
       </h1>
       <p className="mt-4 text-lg leading-8 text-slate-600">
-        Access is restricted to configured pilot admin email. Syrax requests only
+        Access is restricted to the configured administrator. Syrax requests only
         <code className="mx-1 rounded bg-slate-200 px-1.5 py-0.5 text-sm">drive.file</code>
         plus basic identity scopes.
       </p>
@@ -48,7 +48,7 @@ export default async function AdminPage({
       </a>
       <p className="mt-5 text-sm leading-6 text-slate-500">
         Google refresh token stays encrypted in PostgreSQL. Picker access token is issued only
-        to authenticated host browser and is never stored in page markup.
+        to the authenticated administrator&apos;s browser and is never stored in page markup.
       </p>
     </main>
   );

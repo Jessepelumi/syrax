@@ -26,7 +26,7 @@ export default async function UploadPortalPage({
         Syrax Intake
       </Link>
       <p className="mt-8 text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
-        Wedding uploads
+        File uploads
       </p>
       <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
         {portal.name}
@@ -41,13 +41,15 @@ export default async function UploadPortalPage({
                 ? "Uploads are temporarily unavailable"
                 : "This upload link is closed"}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-amber-900">Contact the wedding host for help.</p>
+          <p className="mt-2 text-sm leading-6 text-amber-900">
+            Contact the person who shared this link for help.
+          </p>
         </section>
       ) : null}
 
       <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm text-slate-600">
         <dt>Allowed</dt>
-        <dd>JPEG, PNG, and HEIC images</dd>
+        <dd>JPEG, PNG, and HEIC files</dd>
         <dt>Maximum files</dt>
         <dd>{portal.maxFilesPerSubmission}</dd>
         <dt>Closes</dt>

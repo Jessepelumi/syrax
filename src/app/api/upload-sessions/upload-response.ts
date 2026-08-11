@@ -12,7 +12,7 @@ export function knownUploadErrorResponse(
       { message: string; retryable?: boolean; status: number }
     > = {
       DESTINATION_UNAVAILABLE: {
-        message: "Uploads are temporarily unavailable. Contact the host.",
+        message: "Uploads are temporarily unavailable. Contact the person who shared this link.",
         retryable: true,
         status: 503,
       },
@@ -20,7 +20,7 @@ export function knownUploadErrorResponse(
       PORTAL_CLOSED: { message: "This upload link is closed.", status: 409 },
       PORTAL_EXPIRED: { message: "This upload link has expired.", status: 410 },
       PORTAL_INVALID: { message: "This upload link is invalid.", status: 400 },
-      PORTAL_NOT_CLOSED: { message: "Upload portal conflict.", status: 409 },
+      PORTAL_NOT_DELETABLE: { message: "Upload portal conflict.", status: 409 },
       PORTAL_NOT_FOUND: { message: "This upload link is invalid.", status: 404 },
       PORTAL_STATE_CONFLICT: {
         message: "Portal status changed. Try again.",
@@ -38,7 +38,7 @@ export function knownUploadErrorResponse(
       { message: string; retryable?: boolean; status: number }
     > = {
       DESTINATION_UNAVAILABLE: {
-        message: "Uploads are temporarily unavailable. Contact the host.",
+        message: "Uploads are temporarily unavailable. Contact the person who shared this link.",
         retryable: true,
         status: 503,
       },

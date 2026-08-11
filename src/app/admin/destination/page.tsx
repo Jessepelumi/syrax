@@ -23,11 +23,11 @@ export default async function DestinationPage() {
         Connected as {session.email}
       </p>
       <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
-        Select wedding destination
+        Select folder destination
       </h1>
       <p className="mt-4 text-lg leading-8 text-slate-600">
-        Choose any existing writable Drive folder, or create a new folder in My Drive. Syrax
-        verifies the destination before guest links can use it.
+        Choose any existing folder, or create a new folder. Syrax will
+        verify the destination before request links are created.
       </p>
 
       {destination ? (
@@ -47,13 +47,13 @@ export default async function DestinationPage() {
             className="mt-6 inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-6 font-semibold text-white"
             href="/admin/portal"
           >
-            Manage guest portal
+            Manage request portal
           </Link>
         </>
       ) : (
         <p className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
           No destination is selected. Choose an existing folder or create one below before managing
-          guest portals.
+          request portals.
         </p>
       )}
 

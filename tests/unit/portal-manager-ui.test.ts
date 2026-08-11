@@ -11,11 +11,11 @@ import { PortalManager } from "@/components/admin/portal-manager";
 const portalUrl = "https://syrax.example/upload/guest-capability";
 const defaultExpiry = "2099-08-31T23:59:59.000Z";
 
-function portal(status: "OPEN" | "CLOSED", includeUrl = true) {
+function portal(status: "OPEN" | "CLOSED" | "EXPIRED", includeUrl = true) {
   return {
     expiresAt: defaultExpiry,
     id: "portal-id",
-    name: "Wedding photos",
+    name: "Project files",
     ...(includeUrl ? { portalUrl } : {}),
     status,
   } as const;
@@ -36,9 +36,9 @@ describe("PortalManager active links", () => {
       }),
     );
 
-    expect(screen.getByRole("heading", { name: "Active guest link" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Active request link" })).toBeVisible();
     expect(screen.getByDisplayValue(portalUrl)).toBeVisible();
-    expect(screen.getByRole("button", { name: "Copy guest link" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Copy request link" })).toBeEnabled();
   });
 
   it("restores the same link after reopening a closed portal", async () => {
@@ -80,7 +80,31 @@ describe("PortalManager active links", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete portal" }));
 
     await waitFor(() =>
-      expect(screen.queryByText("Wedding photos")).not.toBeInTheDocument(),
+      expect(screen.queryByText("Project files")).not.toBeInTheDocument(),
+    );
+    expect(fetchMock).toHaveBeenCalledWith("/api/admin/portals/portal-id", {
+      method: "DELETE",
+    });
+    expect(screen.getByText("No portals created yet.")).toBeVisible();
+  });
+
+  it("deletes an expired portal after explicit confirmation", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("confirm", vi.fn(() => true));
+
+    render(
+      createElement(PortalManager, {
+        canCreatePortal: true,
+        defaultExpiry,
+        initialPortals: [portal("EXPIRED", false)],
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete portal" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Project files")).not.toBeInTheDocument(),
     );
     expect(fetchMock).toHaveBeenCalledWith("/api/admin/portals/portal-id", {
       method: "DELETE",
@@ -100,6 +124,21 @@ describe("PortalManager active links", () => {
     expect(screen.queryByRole("button", { name: "Delete portal" })).not.toBeInTheDocument();
   });
 
+  it("does not offer reopening for an expired portal", () => {
+    render(
+      createElement(PortalManager, {
+        canCreatePortal: true,
+        defaultExpiry,
+        initialPortals: [portal("EXPIRED", false)],
+      }),
+    );
+
+    expect(screen.getByRole("button", { name: "Delete portal" })).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: "Reopen retained link" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps closed portal history manageable without a selected destination", () => {
     render(
       createElement(PortalManager, {
@@ -110,6 +149,6 @@ describe("PortalManager active links", () => {
     );
 
     expect(screen.getByRole("button", { name: "Delete portal" })).toBeEnabled();
-    expect(screen.queryByRole("button", { name: "Generate guest link" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Generate request link" })).not.toBeInTheDocument();
   });
 });
