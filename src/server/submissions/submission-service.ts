@@ -1,7 +1,7 @@
 import "server-only";
 
 import { newId } from "@/lib/ids";
-import { isPilotAllowedMimeType } from "@/lib/mime";
+import { isAllowedUploadMimeType } from "@/lib/mime";
 import { normalizeDisplayText } from "@/lib/text";
 import {
   assertPortalAcceptsSubmissions,
@@ -55,16 +55,19 @@ export async function createSubmission(
   const validated = validateSubmissionPlan(
     {
       allowedMimeTypes: portal.allowedMimeTypes,
-      maxFileSizeBytes: portal.maxFileSizeBytes,
+      maxImageBytesPerSubmission: portal.maxImageBytesPerSubmission,
+      maxImageFileSizeBytes: portal.maxImageFileSizeBytes,
       maxFilesPerSubmission: portal.maxFilesPerSubmission,
       maxSubmissionBytes: portal.maxSubmissionBytes,
+      maxVideoBytesPerSubmission: portal.maxVideoBytesPerSubmission,
+      maxVideoFileSizeBytes: portal.maxVideoFileSizeBytes,
     },
     input.files,
   );
   const uploadedAt = new Date();
   const submissionId = newId("submission");
   const preparedFiles: NewUploadFileRecord[] = input.files.map((file) => {
-    if (!isPilotAllowedMimeType(file.mimeType)) {
+    if (!isAllowedUploadMimeType(file.mimeType)) {
       throw new PortalPolicyError("FILE_TYPE_NOT_ALLOWED");
     }
 

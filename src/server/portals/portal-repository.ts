@@ -33,6 +33,14 @@ export type TransitionPortalRecordResult =
   | { kind: "state_conflict" }
   | { kind: "updated"; portal: PortalRecord };
 
+export type UpdatePortalExpiryRecordResult =
+  | { kind: "expired" }
+  | { kind: "invalid" }
+  | { kind: "not_editable" }
+  | { kind: "not_found" }
+  | { kind: "state_conflict" }
+  | { kind: "updated"; portal: PortalRecord };
+
 export type DeletePortalRecordResult =
   | { kind: "deleted" }
   | { kind: "not_deletable" }
@@ -45,8 +53,12 @@ const portalRecordSelection = {
   expiresAt: portals.expiresAt,
   id: portals.id,
   maxFilesPerSubmission: portals.maxFilesPerSubmission,
-  maxFileSizeBytes: portals.maxFileSizeBytes,
+  legacyMaxFileSizeBytes: portals.legacyMaxFileSizeBytes,
+  maxImageBytesPerSubmission: portals.maxImageBytesPerSubmission,
+  maxImageFileSizeBytes: portals.maxImageFileSizeBytes,
   maxSubmissionBytes: portals.maxSubmissionBytes,
+  maxVideoBytesPerSubmission: portals.maxVideoBytesPerSubmission,
+  maxVideoFileSizeBytes: portals.maxVideoFileSizeBytes,
   name: portals.name,
   status: portals.status,
   updatedAt: portals.updatedAt,
@@ -68,9 +80,12 @@ export async function createPortalRecordForAdmin(input: {
   adminId: string;
   allowedMimeTypes: string[];
   expiresAt: Date;
-  maxFileSizeBytes: number;
+  maxImageBytesPerSubmission: number;
+  maxImageFileSizeBytes: number;
   maxFilesPerSubmission: number;
   maxSubmissionBytes: number;
+  maxVideoBytesPerSubmission: number;
+  maxVideoFileSizeBytes: number;
   name: string;
   encryptedPublicToken: string;
   publicTokenHash: string;
@@ -159,9 +174,16 @@ export async function createPortalRecordForAdmin(input: {
         status: "OPEN",
         expiresAt: input.expiresAt,
         allowedMimeTypes: input.allowedMimeTypes,
-        maxFileSizeBytes: input.maxFileSizeBytes,
+        legacyMaxFileSizeBytes: Math.max(
+          input.maxImageFileSizeBytes,
+          input.maxVideoFileSizeBytes,
+        ),
+        maxImageBytesPerSubmission: input.maxImageBytesPerSubmission,
+        maxImageFileSizeBytes: input.maxImageFileSizeBytes,
         maxFilesPerSubmission: input.maxFilesPerSubmission,
         maxSubmissionBytes: input.maxSubmissionBytes,
+        maxVideoBytesPerSubmission: input.maxVideoBytesPerSubmission,
+        maxVideoFileSizeBytes: input.maxVideoFileSizeBytes,
       })
       .returning(portalRecordSelection);
 
@@ -175,9 +197,12 @@ export async function createPortalRecordForAdmin(input: {
       metadata: {
         destinationId: destination.id,
         expiresAt: input.expiresAt.toISOString(),
-        maxFileSizeBytes: input.maxFileSizeBytes,
+        maxImageBytesPerSubmission: input.maxImageBytesPerSubmission,
+        maxImageFileSizeBytes: input.maxImageFileSizeBytes,
         maxFilesPerSubmission: input.maxFilesPerSubmission,
         maxSubmissionBytes: input.maxSubmissionBytes,
+        maxVideoBytesPerSubmission: input.maxVideoBytesPerSubmission,
+        maxVideoFileSizeBytes: input.maxVideoFileSizeBytes,
       },
     });
 
@@ -351,6 +376,113 @@ export async function transitionPortalRecordForAdmin(input: {
       resourceType: "portal",
       resourceId: input.portalId,
       metadata: { previousStatus: input.expectedStatus },
+    });
+
+    return { kind: "updated", portal: updated };
+  });
+}
+
+export async function updatePortalExpiryRecordForAdmin(input: {
+  actorId: string;
+  expiresAt: Date;
+  portalId: string;
+}): Promise<UpdatePortalExpiryRecordResult> {
+  return getDatabase().transaction(async (transaction) => {
+    await transaction.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${input.actorId}, 0))`,
+    );
+
+    const [owned] = await transaction
+      .select({
+        expiresAt: portals.expiresAt,
+        status: portals.status,
+      })
+      .from(portals)
+      .innerJoin(driveDestinations, eq(portals.destinationId, driveDestinations.id))
+      .innerJoin(
+        driveConnections,
+        eq(driveDestinations.driveConnectionId, driveConnections.id),
+      )
+      .where(
+        and(
+          eq(driveConnections.adminId, input.actorId),
+          eq(portals.id, input.portalId),
+        ),
+      )
+      .limit(1);
+
+    if (!owned) {
+      return { kind: "not_found" };
+    }
+
+    const now = new Date();
+
+    if (input.expiresAt.getTime() <= now.getTime()) {
+      return { kind: "invalid" };
+    }
+
+    if (owned.status === "EXPIRED" || owned.expiresAt.getTime() <= now.getTime()) {
+      if (owned.status !== "EXPIRED") {
+        const [expired] = await transaction
+          .update(portals)
+          .set({ status: "EXPIRED", updatedAt: now })
+          .where(
+            and(
+              eq(portals.id, input.portalId),
+              eq(portals.status, owned.status),
+              lte(portals.expiresAt, now),
+            ),
+          )
+          .returning({ id: portals.id });
+
+        if (expired) {
+          await transaction.insert(auditEvents).values({
+            id: newId("audit"),
+            actorType: "SYSTEM",
+            eventType: "portal.expired",
+            resourceType: "portal",
+            resourceId: input.portalId,
+            metadata: { reason: "expiry_elapsed" },
+          });
+        }
+      }
+
+      return { kind: "expired" };
+    }
+
+    if (owned.status !== "OPEN" && owned.status !== "CLOSED") {
+      return { kind: "not_editable" };
+    }
+
+    const [updated] = await transaction
+      .update(portals)
+      .set({ expiresAt: input.expiresAt, updatedAt: now })
+      .where(
+        and(
+          eq(portals.id, input.portalId),
+          eq(portals.status, owned.status),
+          eq(portals.expiresAt, owned.expiresAt),
+          gt(portals.expiresAt, now),
+        ),
+      )
+      .returning(portalRecordSelection);
+
+    if (!updated) {
+      return { kind: "state_conflict" };
+    }
+
+    await transaction.insert(auditEvents).values({
+      id: newId("audit"),
+      actorType: "ADMIN",
+      actorId: input.actorId,
+      eventType: "portal.expiry_changed",
+      resourceType: "portal",
+      resourceId: input.portalId,
+      metadata: {
+        expiresAt: input.expiresAt.toISOString(),
+        previousExpiresAt: owned.expiresAt.toISOString(),
+        status: owned.status,
+      },
     });
 
     return { kind: "updated", portal: updated };

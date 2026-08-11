@@ -49,7 +49,16 @@ export default async function UploadPortalPage({
 
       <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm text-slate-600">
         <dt>Allowed</dt>
-        <dd>JPEG, PNG, and HEIC files</dd>
+        <dd>JPEG, PNG, HEIC, MP4, and MOV files</dd>
+        <dt>Photo limit</dt>
+        <dd>
+          {Math.round(portal.maxImageFileSizeBytes / (1024 * 1024))} MiB per file; {" "}
+          {(portal.maxImageBytesPerSubmission / (1024 * 1024 * 1024)).toFixed(1)} GiB total
+        </dd>
+        <dt>Video limit</dt>
+        <dd>
+          {portal.maxVideoFileSizeBytes / (1024 * 1024 * 1024)} GiB per file and total
+        </dd>
         <dt>Maximum files</dt>
         <dd>{portal.maxFilesPerSubmission}</dd>
         <dt>Closes</dt>
@@ -60,9 +69,12 @@ export default async function UploadPortalPage({
         <GuestUpload
           allowedMimeTypes={portal.allowedMimeTypes}
           concurrency={getEnvironment().UPLOAD_CLIENT_CONCURRENCY}
-          maxFileSizeBytes={portal.maxFileSizeBytes}
+          maxImageBytesPerSubmission={portal.maxImageBytesPerSubmission}
+          maxImageFileSizeBytes={portal.maxImageFileSizeBytes}
           maxFilesPerSubmission={portal.maxFilesPerSubmission}
           maxSubmissionBytes={portal.maxSubmissionBytes}
+          maxVideoBytesPerSubmission={portal.maxVideoBytesPerSubmission}
+          maxVideoFileSizeBytes={portal.maxVideoFileSizeBytes}
           portalToken={portalToken}
         />
       ) : null}

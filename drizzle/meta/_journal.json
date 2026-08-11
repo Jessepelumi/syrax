@@ -36,6 +36,20 @@
       "when": 1786380760504,
       "tag": "0004_sudden_fenris",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786417184595,
+      "tag": "0005_outgoing_firelord",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786452124961,
+      "tag": "0006_melted_timeslip",
+      "breakpoints": true
     }
   ]
 }

@@ -1,12 +1,16 @@
 import "server-only";
 
+import { uploadFileCategoryForMimeType } from "@/lib/mime";
+
 export type PortalPolicyErrorCode =
   | "DUPLICATE_CLIENT_FILE_ID"
   | "FILE_COUNT_INVALID"
   | "FILE_METADATA_INVALID"
   | "FILE_TOO_LARGE"
   | "FILE_TYPE_NOT_ALLOWED"
-  | "SUBMISSION_TOO_LARGE";
+  | "IMAGE_SUBMISSION_TOO_LARGE"
+  | "SUBMISSION_TOO_LARGE"
+  | "VIDEO_SUBMISSION_TOO_LARGE";
 
 export class PortalPolicyError extends Error {
   constructor(readonly code: PortalPolicyErrorCode) {
@@ -24,14 +28,19 @@ export interface SubmissionFilePlan {
 
 export interface PortalSubmissionPolicy {
   allowedMimeTypes: readonly string[];
-  maxFileSizeBytes: number;
+  maxImageBytesPerSubmission: number;
+  maxImageFileSizeBytes: number;
   maxFilesPerSubmission: number;
   maxSubmissionBytes: number;
+  maxVideoBytesPerSubmission: number;
+  maxVideoFileSizeBytes: number;
 }
 
 export interface ValidatedSubmissionPlan {
   fileCount: number;
+  imageDeclaredBytes: number;
   totalDeclaredBytes: number;
+  videoDeclaredBytes: number;
 }
 
 function isPositiveSafeInteger(value: number): boolean {
@@ -42,12 +51,21 @@ export function validateSubmissionPlan(
   policy: PortalSubmissionPolicy,
   files: readonly SubmissionFilePlan[],
 ): ValidatedSubmissionPlan {
+  const combinedCategoryBudget =
+    policy.maxImageBytesPerSubmission + policy.maxVideoBytesPerSubmission;
+
   if (
     !Number.isSafeInteger(policy.maxFilesPerSubmission) ||
     policy.maxFilesPerSubmission <= 0 ||
-    !isPositiveSafeInteger(policy.maxFileSizeBytes) ||
+    !isPositiveSafeInteger(policy.maxImageBytesPerSubmission) ||
+    !isPositiveSafeInteger(policy.maxImageFileSizeBytes) ||
+    !isPositiveSafeInteger(policy.maxVideoBytesPerSubmission) ||
+    !isPositiveSafeInteger(policy.maxVideoFileSizeBytes) ||
     !isPositiveSafeInteger(policy.maxSubmissionBytes) ||
-    policy.maxSubmissionBytes < policy.maxFileSizeBytes ||
+    policy.maxImageBytesPerSubmission < policy.maxImageFileSizeBytes ||
+    policy.maxVideoBytesPerSubmission < policy.maxVideoFileSizeBytes ||
+    !Number.isSafeInteger(combinedCategoryBudget) ||
+    policy.maxSubmissionBytes < combinedCategoryBudget ||
     policy.allowedMimeTypes.length === 0
   ) {
     throw new PortalPolicyError("FILE_METADATA_INVALID");
@@ -59,7 +77,9 @@ export function validateSubmissionPlan(
 
   const allowedMimeTypes = new Set(policy.allowedMimeTypes);
   const clientFileIds = new Set<string>();
+  let imageDeclaredBytes = 0;
   let totalDeclaredBytes = 0;
+  let videoDeclaredBytes = 0;
 
   for (const file of files) {
     if (
@@ -77,12 +97,39 @@ export function validateSubmissionPlan(
 
     clientFileIds.add(file.clientFileId);
 
-    if (!allowedMimeTypes.has(file.mimeType)) {
+    const category = uploadFileCategoryForMimeType(file.mimeType);
+
+    if (!allowedMimeTypes.has(file.mimeType) || !category) {
       throw new PortalPolicyError("FILE_TYPE_NOT_ALLOWED");
     }
 
-    if (file.sizeBytes > policy.maxFileSizeBytes) {
+    const maxFileSizeBytes =
+      category === "VIDEO"
+        ? policy.maxVideoFileSizeBytes
+        : policy.maxImageFileSizeBytes;
+
+    if (file.sizeBytes > maxFileSizeBytes) {
       throw new PortalPolicyError("FILE_TOO_LARGE");
+    }
+
+    if (category === "VIDEO") {
+      videoDeclaredBytes += file.sizeBytes;
+
+      if (
+        !Number.isSafeInteger(videoDeclaredBytes) ||
+        videoDeclaredBytes > policy.maxVideoBytesPerSubmission
+      ) {
+        throw new PortalPolicyError("VIDEO_SUBMISSION_TOO_LARGE");
+      }
+    } else {
+      imageDeclaredBytes += file.sizeBytes;
+
+      if (
+        !Number.isSafeInteger(imageDeclaredBytes) ||
+        imageDeclaredBytes > policy.maxImageBytesPerSubmission
+      ) {
+        throw new PortalPolicyError("IMAGE_SUBMISSION_TOO_LARGE");
+      }
     }
 
     totalDeclaredBytes += file.sizeBytes;
@@ -95,5 +142,10 @@ export function validateSubmissionPlan(
     }
   }
 
-  return { fileCount: files.length, totalDeclaredBytes };
+  return {
+    fileCount: files.length,
+    imageDeclaredBytes,
+    totalDeclaredBytes,
+    videoDeclaredBytes,
+  };
 }

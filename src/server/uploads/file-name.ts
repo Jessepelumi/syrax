@@ -2,7 +2,7 @@ import "server-only";
 
 import {
   extensionForMimeType,
-  type PilotAllowedMimeType,
+  type AllowedUploadMimeType,
 } from "@/lib/mime";
 
 const BIDI_CONTROL_CHARACTERS = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
@@ -51,7 +51,7 @@ export function sanitizeOriginalFileName(value: string): string {
 
 export function createDestinationFileName(input: {
   fileId: string;
-  mimeType: PilotAllowedMimeType;
+  mimeType: AllowedUploadMimeType;
   originalName: string;
   submissionId: string;
   uploadedAt: Date;
