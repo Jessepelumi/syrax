@@ -6,6 +6,7 @@ import { getAdminSession } from "@/server/auth/admin-session";
 const errorMessages: Record<string, string> = {
   oauth_denied: "Google authorization was cancelled.",
   oauth_failed: "Google authorization failed. Check configuration and try again.",
+  oauth_not_invited: "This Google account is not invited to the Syrax beta.",
   oauth_state_invalid: "Authorization session expired. Start again.",
 };
 
@@ -31,7 +32,7 @@ export default async function AdminPage({
         Connect your Google account
       </h1>
       <p className="mt-4 text-lg leading-8 text-slate-600">
-        Access is restricted to the configured administrator. Syrax requests only
+        Access is restricted to invited beta administrators. Syrax requests only
         <code className="mx-1 rounded bg-slate-200 px-1.5 py-0.5 text-sm">drive.file</code>
         plus basic identity scopes.
       </p>

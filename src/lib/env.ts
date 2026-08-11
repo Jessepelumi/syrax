@@ -14,6 +14,25 @@ const positiveInteger = z.coerce
   .positive()
   .max(Number.MAX_SAFE_INTEGER);
 
+const normalizedEmail = z
+  .string()
+  .trim()
+  .pipe(z.email())
+  .transform((value) => value.toLowerCase());
+
+const betaAdminEmails = z
+  .string()
+  .transform((value) => value.split(","))
+  .pipe(z.array(normalizedEmail).min(1).max(100))
+  .superRefine((emails, context) => {
+    if (new Set(emails).size !== emails.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Must not contain duplicate email addresses",
+      });
+    }
+  });
+
 export const environmentSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -22,11 +41,7 @@ export const environmentSchema = z
       (value) => value.startsWith("postgresql://") || value.startsWith("postgres://"),
       "Must be a PostgreSQL connection URL",
     ),
-    ADMIN_EMAIL: z
-      .string()
-      .trim()
-      .pipe(z.email())
-      .transform((value) => value.toLowerCase()),
+    BETA_ADMIN_EMAILS: betaAdminEmails,
     ADMIN_SESSION_SECRET: z.string().min(32),
     TOKEN_ENCRYPTION_KEY: base64KeySchema,
     GOOGLE_CLIENT_ID: z.string().min(1),
