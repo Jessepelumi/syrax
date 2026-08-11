@@ -15,9 +15,12 @@ const validEnvironment = {
   GOOGLE_API_KEY: "api-key",
   GOOGLE_CLOUD_PROJECT_NUMBER: "123456789",
   DEFAULT_PORTAL_EXPIRY: "2026-08-31T23:59:59Z",
-  MAX_FILE_SIZE_BYTES: "2147483648",
+  MAX_IMAGE_FILE_SIZE_BYTES: "104857600",
+  MAX_VIDEO_FILE_SIZE_BYTES: "2147483648",
+  MAX_IMAGE_BYTES_PER_SUBMISSION: "1610612736",
+  MAX_VIDEO_BYTES_PER_SUBMISSION: "2147483648",
   MAX_FILES_PER_SUBMISSION: "50",
-  MAX_SUBMISSION_BYTES: "10737418240",
+  MAX_SUBMISSION_BYTES: "3758096384",
   UPLOAD_CHUNK_SIZE_BYTES: "8388608",
   UPLOAD_CLIENT_CONCURRENCY: "2",
   LOG_LEVEL: "info",
@@ -32,6 +35,8 @@ describe("parseEnvironment", () => {
       "second@example.com",
     ]);
     expect(environment.MAX_FILES_PER_SUBMISSION).toBe(50);
+    expect(environment.MAX_IMAGE_FILE_SIZE_BYTES).toBe(100 * 1024 * 1024);
+    expect(environment.MAX_VIDEO_FILE_SIZE_BYTES).toBe(2 * 1024 * 1024 * 1024);
     expect(environment.UPLOAD_CHUNK_SIZE_BYTES).toBe(8 * 1024 * 1024);
   });
 
@@ -60,7 +65,8 @@ describe("parseEnvironment", () => {
     expect(() =>
       parseEnvironment({
         ...validEnvironment,
-        MAX_FILE_SIZE_BYTES: (Number.MAX_SAFE_INTEGER + 1).toString(),
+        MAX_IMAGE_FILE_SIZE_BYTES: (Number.MAX_SAFE_INTEGER + 1).toString(),
+        MAX_VIDEO_FILE_SIZE_BYTES: (Number.MAX_SAFE_INTEGER + 1).toString(),
         MAX_SUBMISSION_BYTES: (Number.MAX_SAFE_INTEGER + 1).toString(),
       }),
     ).toThrow();

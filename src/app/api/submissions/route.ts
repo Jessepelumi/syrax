@@ -4,7 +4,7 @@ import { z } from "zod";
 import { errorResponse, type ErrorCode } from "@/lib/errors";
 import { newId } from "@/lib/ids";
 import { getLogger } from "@/lib/logger";
-import { PILOT_ALLOWED_MIME_TYPES } from "@/lib/mime";
+import { ALLOWED_UPLOAD_MIME_TYPES } from "@/lib/mime";
 import {
   hasJsonContentType,
   readJsonBody,
@@ -27,7 +27,7 @@ const submissionRequestSchema = z
           .object({
             clientFileId: z.string().trim().min(1).max(128),
             name: z.string().trim().min(1).max(255),
-            mimeType: z.enum(PILOT_ALLOWED_MIME_TYPES),
+            mimeType: z.enum(ALLOWED_UPLOAD_MIME_TYPES),
             sizeBytes: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
           })
           .strict(),
@@ -47,6 +47,7 @@ function portalErrorResponse(error: PortalServiceError, requestId: string): Resp
     PORTAL_CLOSED: { message: "This upload link is closed.", status: 409 },
     PORTAL_EXPIRED: { message: "This upload link has expired.", status: 410 },
     PORTAL_INVALID: { message: "This upload link is invalid.", status: 400 },
+    PORTAL_NOT_EDITABLE: { message: "Upload portal conflict.", status: 409 },
     PORTAL_NOT_DELETABLE: { message: "Upload portal conflict.", status: 409 },
     PORTAL_NOT_FOUND: { message: "This upload link is invalid.", status: 404 },
     PORTAL_STATE_CONFLICT: {
@@ -84,9 +85,17 @@ function policyErrorResponse(error: PortalPolicyError, requestId: string): Respo
       code: "FILE_TYPE_NOT_ALLOWED",
       message: "One or more file types are not allowed.",
     },
+    IMAGE_SUBMISSION_TOO_LARGE: {
+      code: "IMAGE_SUBMISSION_TOO_LARGE",
+      message: "The selected photos exceed this portal's photo capacity.",
+    },
     SUBMISSION_TOO_LARGE: {
       code: "SUBMISSION_TOO_LARGE",
       message: "The selected files exceed the submission-size limit.",
+    },
+    VIDEO_SUBMISSION_TOO_LARGE: {
+      code: "VIDEO_SUBMISSION_TOO_LARGE",
+      message: "The selected videos exceed this portal's video capacity.",
     },
   };
 

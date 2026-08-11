@@ -131,7 +131,23 @@ export const portals = pgTable(
     status: portalStatus("status").notNull().default("DRAFT"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     allowedMimeTypes: text("allowed_mime_types").array().notNull(),
-    maxFileSizeBytes: bigint("max_file_size_bytes", { mode: "number" }).notNull(),
+    legacyMaxFileSizeBytes: bigint("max_file_size_bytes", { mode: "number" }).notNull(),
+    maxImageFileSizeBytes: bigint("max_image_file_size_bytes", { mode: "number" })
+      .default(104_857_600)
+      .notNull(),
+    maxVideoFileSizeBytes: bigint("max_video_file_size_bytes", { mode: "number" })
+      .default(2_147_483_648)
+      .notNull(),
+    maxImageBytesPerSubmission: bigint("max_image_bytes_per_submission", {
+      mode: "number",
+    })
+      .default(1_610_612_736)
+      .notNull(),
+    maxVideoBytesPerSubmission: bigint("max_video_bytes_per_submission", {
+      mode: "number",
+    })
+      .default(2_147_483_648)
+      .notNull(),
     maxFilesPerSubmission: integer("max_files_per_submission").notNull(),
     maxSubmissionBytes: bigint("max_submission_bytes", { mode: "number" }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -142,14 +158,42 @@ export const portals = pgTable(
     index("portals_destination_created_idx").on(table.destinationId, table.createdAt),
     index("portals_status_expires_idx").on(table.status, table.expiresAt),
     check("portals_allowed_mime_types_nonempty", sql`cardinality(${table.allowedMimeTypes}) > 0`),
-    check("portals_max_file_size_positive", sql`${table.maxFileSizeBytes} > 0`),
+    check("portals_max_file_size_positive", sql`${table.legacyMaxFileSizeBytes} > 0`),
+    check(
+      "portals_max_image_file_size_positive",
+      sql`${table.maxImageFileSizeBytes} > 0`,
+    ),
+    check(
+      "portals_max_video_file_size_positive",
+      sql`${table.maxVideoFileSizeBytes} > 0`,
+    ),
+    check(
+      "portals_max_image_submission_size_valid",
+      sql`${table.maxImageBytesPerSubmission} >= ${table.maxImageFileSizeBytes}`,
+    ),
+    check(
+      "portals_max_video_submission_size_valid",
+      sql`${table.maxVideoBytesPerSubmission} >= ${table.maxVideoFileSizeBytes}`,
+    ),
     check(
       "portals_max_files_per_submission_positive",
       sql`${table.maxFilesPerSubmission} > 0`,
     ),
     check(
       "portals_max_submission_size_valid",
-      sql`${table.maxSubmissionBytes} >= ${table.maxFileSizeBytes}`,
+      sql`${table.maxSubmissionBytes} >= ${table.legacyMaxFileSizeBytes}`,
+    ),
+    check(
+      "portals_max_submission_image_size_valid",
+      sql`${table.maxSubmissionBytes} >= ${table.maxImageFileSizeBytes}`,
+    ),
+    check(
+      "portals_max_submission_video_size_valid",
+      sql`${table.maxSubmissionBytes} >= ${table.maxVideoFileSizeBytes}`,
+    ),
+    check(
+      "portals_max_submission_category_sizes_valid",
+      sql`${table.maxSubmissionBytes} >= ${table.maxImageBytesPerSubmission} + ${table.maxVideoBytesPerSubmission}`,
     ),
   ],
 );

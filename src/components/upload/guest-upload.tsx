@@ -9,6 +9,7 @@ import {
   type BrowserUploadIdentity,
 } from "@/lib/upload-engine";
 import { getAggregateUploadProgress } from "@/lib/upload-progress";
+import { uploadFileCategoryForMimeType } from "@/lib/mime";
 import {
   FileRow,
   type GuestFileRowModel,
@@ -18,9 +19,12 @@ import {
 interface GuestUploadProps {
   allowedMimeTypes: string[];
   concurrency: number;
-  maxFileSizeBytes: number;
+  maxImageBytesPerSubmission: number;
+  maxImageFileSizeBytes: number;
   maxFilesPerSubmission: number;
   maxSubmissionBytes: number;
+  maxVideoBytesPerSubmission: number;
+  maxVideoFileSizeBytes: number;
   portalToken: string;
 }
 
@@ -48,6 +52,11 @@ function formatBytes(bytes: number): string {
     return `${Math.ceil(bytes / 1024)} KiB`;
   }
 
+  if (bytes >= 1024 * 1024 * 1024) {
+    const gibibytes = bytes / (1024 * 1024 * 1024);
+    return `${Number.isInteger(gibibytes) ? gibibytes : gibibytes.toFixed(1)} GiB`;
+  }
+
   return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
@@ -70,6 +79,31 @@ export function GuestUpload(props: GuestUploadProps) {
   const controllers = useRef(new Map<string, AbortController>());
   const cancelled = useRef(new Set<string>());
   const allowedMimeTypes = new Set(props.allowedMimeTypes);
+  const selectedImageBytes = items.reduce(
+    (total, item) =>
+      uploadFileCategoryForMimeType(item.file.type) === "IMAGE"
+        ? total + item.file.size
+        : total,
+    0,
+  );
+  const selectedVideoBytes = items.reduce(
+    (total, item) =>
+      uploadFileCategoryForMimeType(item.file.type) === "VIDEO"
+        ? total + item.file.size
+        : total,
+    0,
+  );
+  const selectableMimeTypes = props.allowedMimeTypes.filter((mimeType) => {
+    const category = uploadFileCategoryForMimeType(mimeType);
+
+    return category === "IMAGE"
+      ? selectedImageBytes < props.maxImageBytesPerSubmission
+      : category === "VIDEO"
+        ? selectedVideoBytes < props.maxVideoBytesPerSubmission
+        : false;
+  });
+  const canSelectMoreFiles =
+    items.length < props.maxFilesPerSubmission && selectableMimeTypes.length > 0;
 
   function updateItem(
     clientFileId: string,
@@ -91,7 +125,9 @@ export function GuestUpload(props: GuestUploadProps) {
     const selected = Array.from(files);
     const existingFingerprints = new Set(items.map((item) => fingerprint(item.file)));
     const additions: GuestFileRowModel[] = [];
+    let imageBytes = selectedImageBytes;
     let totalBytes = items.reduce((total, item) => total + item.file.size, 0);
+    let videoBytes = selectedVideoBytes;
 
     for (const file of selected) {
       if (items.length + additions.length >= props.maxFilesPerSubmission) {
@@ -103,16 +139,43 @@ export function GuestUpload(props: GuestUploadProps) {
         continue;
       }
 
-      if (!allowedMimeTypes.has(file.type)) {
+      const category = uploadFileCategoryForMimeType(file.type);
+
+      if (!allowedMimeTypes.has(file.type) || !category) {
         setGlobalError(
-          `${file.name} is not a supported file type. Choose a JPEG, PNG, or HEIC file.`,
+          `${file.name} is not supported. Choose a JPEG, PNG, HEIC, MP4, or MOV file.`,
         );
         continue;
       }
 
-      if (file.size <= 0 || file.size > props.maxFileSizeBytes) {
+      const maxFileSizeBytes =
+        category === "VIDEO"
+          ? props.maxVideoFileSizeBytes
+          : props.maxImageFileSizeBytes;
+
+      if (file.size <= 0 || file.size > maxFileSizeBytes) {
         setGlobalError(
-          `${file.name} must be non-empty and no larger than ${formatBytes(props.maxFileSizeBytes)}.`,
+          `${file.name} must be non-empty and no larger than ${formatBytes(maxFileSizeBytes)}.`,
+        );
+        continue;
+      }
+
+      if (
+        category === "IMAGE" &&
+        imageBytes + file.size > props.maxImageBytesPerSubmission
+      ) {
+        setGlobalError(
+          `${file.name} exceeds the remaining ${formatBytes(props.maxImageBytesPerSubmission - imageBytes)} photo selection capacity.`,
+        );
+        continue;
+      }
+
+      if (
+        category === "VIDEO" &&
+        videoBytes + file.size > props.maxVideoBytesPerSubmission
+      ) {
+        setGlobalError(
+          `${file.name} exceeds the remaining ${formatBytes(props.maxVideoBytesPerSubmission - videoBytes)} video selection capacity.`,
         );
         continue;
       }
@@ -125,6 +188,11 @@ export function GuestUpload(props: GuestUploadProps) {
       }
 
       totalBytes += file.size;
+      if (category === "IMAGE") {
+        imageBytes += file.size;
+      } else {
+        videoBytes += file.size;
+      }
       existingFingerprints.add(fingerprint(file));
       additions.push({
         clientFileId: newClientFileId(),
@@ -319,8 +387,12 @@ export function GuestUpload(props: GuestUploadProps) {
         Add your files
       </h2>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        Select up to {props.maxFilesPerSubmission} files. Accepted formats: JPEG, PNG, and HEIC. Two
-        files upload at a time.
+        Select up to {props.maxFilesPerSubmission} photos or videos. Each photo can be up to {" "}
+        {formatBytes(props.maxImageFileSizeBytes)} and each video up to {" "}
+        {formatBytes(props.maxVideoFileSizeBytes)}. Selection capacity is {" "}
+        {formatBytes(props.maxImageBytesPerSubmission)} for photos and {" "}
+        {formatBytes(props.maxVideoBytesPerSubmission)} for videos. Accepted formats: JPEG, PNG,
+        HEIC, MP4, and MOV.
       </p>
 
       {!submissionId ? (
@@ -343,9 +415,9 @@ export function GuestUpload(props: GuestUploadProps) {
               Choose files
             </label>
             <input
-              accept={props.allowedMimeTypes.join(",")}
+              accept={selectableMimeTypes.join(",")}
               className="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm file:mr-3 file:rounded-full file:border-0 file:bg-slate-950 file:px-4 file:py-2 file:font-semibold file:text-white"
-              disabled={running}
+              disabled={running || !canSelectMoreFiles}
               id="guest-files"
               multiple
               onChange={(event) => {
@@ -362,6 +434,22 @@ export function GuestUpload(props: GuestUploadProps) {
         <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
           {globalError}
         </p>
+      ) : null}
+
+      {items.length > 0 ? (
+        <section
+          aria-label="Selection capacity"
+          className="mt-5 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm sm:grid-cols-2"
+        >
+          <p className="text-slate-700">
+            Photos: <strong>{formatBytes(selectedImageBytes)}</strong> / {" "}
+            {formatBytes(props.maxImageBytesPerSubmission)} selected
+          </p>
+          <p className="text-slate-700">
+            Videos: <strong>{formatBytes(selectedVideoBytes)}</strong> / {" "}
+            {formatBytes(props.maxVideoBytesPerSubmission)} selected
+          </p>
+        </section>
       ) : null}
 
       {items.length > 0 ? (

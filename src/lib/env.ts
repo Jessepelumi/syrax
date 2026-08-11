@@ -50,7 +50,10 @@ export const environmentSchema = z
     GOOGLE_API_KEY: z.string().min(1),
     GOOGLE_CLOUD_PROJECT_NUMBER: z.string().regex(/^\d+$/),
     DEFAULT_PORTAL_EXPIRY: z.iso.datetime({ offset: true }),
-    MAX_FILE_SIZE_BYTES: positiveInteger,
+    MAX_IMAGE_FILE_SIZE_BYTES: positiveInteger,
+    MAX_VIDEO_FILE_SIZE_BYTES: positiveInteger,
+    MAX_IMAGE_BYTES_PER_SUBMISSION: positiveInteger,
+    MAX_VIDEO_BYTES_PER_SUBMISSION: positiveInteger,
     MAX_FILES_PER_SUBMISSION: positiveInteger.max(100),
     MAX_SUBMISSION_BYTES: positiveInteger,
     UPLOAD_CHUNK_SIZE_BYTES: positiveInteger.refine(
@@ -63,11 +66,34 @@ export const environmentSchema = z
     VERCEL_GIT_COMMIT_SHA: z.string().min(1).optional(),
   })
   .superRefine((environment, context) => {
-    if (environment.MAX_SUBMISSION_BYTES < environment.MAX_FILE_SIZE_BYTES) {
+    const combinedCategoryBudget =
+      environment.MAX_IMAGE_BYTES_PER_SUBMISSION +
+      environment.MAX_VIDEO_BYTES_PER_SUBMISSION;
+
+    if (environment.MAX_IMAGE_BYTES_PER_SUBMISSION < environment.MAX_IMAGE_FILE_SIZE_BYTES) {
+      context.addIssue({
+        code: "custom",
+        path: ["MAX_IMAGE_BYTES_PER_SUBMISSION"],
+        message: "Must be at least MAX_IMAGE_FILE_SIZE_BYTES",
+      });
+    }
+
+    if (environment.MAX_VIDEO_BYTES_PER_SUBMISSION < environment.MAX_VIDEO_FILE_SIZE_BYTES) {
+      context.addIssue({
+        code: "custom",
+        path: ["MAX_VIDEO_BYTES_PER_SUBMISSION"],
+        message: "Must be at least MAX_VIDEO_FILE_SIZE_BYTES",
+      });
+    }
+
+    if (
+      !Number.isSafeInteger(combinedCategoryBudget) ||
+      environment.MAX_SUBMISSION_BYTES < combinedCategoryBudget
+    ) {
       context.addIssue({
         code: "custom",
         path: ["MAX_SUBMISSION_BYTES"],
-        message: "Must be at least MAX_FILE_SIZE_BYTES",
+        message: "Must cover both category submission budgets",
       });
     }
   });

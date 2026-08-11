@@ -340,7 +340,7 @@ export async function recordFeasibilityUploadFailure(input: {
 
 export function getFeasibilityUploadLimitBytes(): number {
   return Math.min(
-    getEnvironment().MAX_FILE_SIZE_BYTES,
+    getEnvironment().MAX_IMAGE_FILE_SIZE_BYTES,
     FEASIBILITY_MAX_FILE_SIZE_BYTES,
   );
 }

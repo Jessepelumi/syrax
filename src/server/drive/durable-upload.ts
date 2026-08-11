@@ -2,7 +2,7 @@ import "server-only";
 
 import type { drive_v3 } from "googleapis";
 
-import type { PilotAllowedMimeType } from "@/lib/mime";
+import type { AllowedUploadMimeType } from "@/lib/mime";
 import { getAuthorizedGoogleClient, getDriveClient } from "@/server/drive/client";
 import { isSafeGoogleUploadSessionUrl } from "@/server/drive/resumable-upload";
 
@@ -79,7 +79,7 @@ function mappedGoogleApiError(error: unknown): DurableUploadProviderError {
 }
 
 function equivalentProviderMimeType(
-  declaredMimeType: PilotAllowedMimeType,
+  declaredMimeType: AllowedUploadMimeType,
   providerMimeType: string | null | undefined,
 ): boolean {
   return (
@@ -121,7 +121,7 @@ export function parseProviderConfirmedBytes(
 }
 
 export function validateDriveUploadMetadata(input: {
-  declaredMimeType: PilotAllowedMimeType;
+  declaredMimeType: AllowedUploadMimeType;
   declaredSizeBytes: number;
   destinationFolderId: string;
   destinationName: string;
@@ -153,7 +153,7 @@ export function validateDriveUploadMetadata(input: {
 
 export async function createDriveUploadSession(input: {
   adminId: string;
-  declaredMimeType: PilotAllowedMimeType;
+  declaredMimeType: AllowedUploadMimeType;
   declaredSizeBytes: number;
   destinationFolderId: string;
   destinationName: string;
@@ -326,7 +326,7 @@ async function findDriveUploadMetadata(input: {
 
 export async function verifyDriveUploadCompletion(input: {
   adminId: string;
-  declaredMimeType: PilotAllowedMimeType;
+  declaredMimeType: AllowedUploadMimeType;
   declaredSizeBytes: number;
   destinationFolderId: string;
   destinationName: string;

@@ -11,13 +11,15 @@ import {
   deleteInactivePortalForAdmin,
   PortalServiceError,
   transitionPortalForAdmin,
+  updatePortalExpiryForAdmin,
 } from "@/server/portals/portal-service";
 
 export const runtime = "nodejs";
 
-const transitionRequestSchema = z.object({
-  status: z.enum(["OPEN", "CLOSED"]),
-}).strict();
+const portalUpdateRequestSchema = z.union([
+  z.object({ status: z.enum(["OPEN", "CLOSED"]) }).strict(),
+  z.object({ expiresAt: z.iso.datetime({ offset: true }) }).strict(),
+]);
 
 export async function PATCH(
   request: NextRequest,
@@ -67,30 +69,39 @@ export async function PATCH(
     });
   }
 
-  const parsedBody = transitionRequestSchema.safeParse(body);
+  const parsedBody = portalUpdateRequestSchema.safeParse(body);
 
   if (!parsedBody.success || portalId.length > 128) {
     return errorResponse({
       code: "INVALID_REQUEST",
-      message: "Portal status request is invalid.",
+      message: "Portal update request is invalid.",
       requestId,
       status: 400,
     });
   }
 
   try {
-    const portal = await transitionPortalForAdmin({
-      adminId: session.adminId,
-      portalId,
-      status: parsedBody.data.status,
-    });
+    const portal = "status" in parsedBody.data
+      ? await transitionPortalForAdmin({
+          adminId: session.adminId,
+          portalId,
+          status: parsedBody.data.status,
+        })
+      : await updatePortalExpiryForAdmin({
+          adminId: session.adminId,
+          expiresAt: new Date(parsedBody.data.expiresAt),
+          portalId,
+        });
 
     getLogger().info({
-      event: "portal.status_changed",
+      event: "status" in parsedBody.data
+        ? "portal.status_changed"
+        : "portal.expiry_changed",
       requestId,
       adminId: session.adminId,
       portalId,
       status: portal.status,
+      expiresAt: portal.expiresAt.toISOString(),
     });
 
     return Response.json(
@@ -113,6 +124,8 @@ export async function PATCH(
         | "DESTINATION_UNAVAILABLE"
         | "PORTAL_ALREADY_OPEN"
         | "PORTAL_EXPIRED"
+        | "PORTAL_INVALID"
+        | "PORTAL_NOT_EDITABLE"
         | "PORTAL_NOT_FOUND"
         | "PORTAL_STATE_CONFLICT",
         { message: string; status: number }
@@ -126,6 +139,14 @@ export async function PATCH(
           status: 409,
         },
         PORTAL_EXPIRED: { message: "This portal has expired.", status: 410 },
+        PORTAL_INVALID: {
+          message: "Choose a valid expiry time in the future.",
+          status: 400,
+        },
+        PORTAL_NOT_EDITABLE: {
+          message: "This portal's expiry can no longer be edited.",
+          status: 409,
+        },
         PORTAL_NOT_FOUND: { message: "Portal was not found.", status: 404 },
         PORTAL_STATE_CONFLICT: {
           message: "Portal status changed. Refresh and try again.",
@@ -140,7 +161,7 @@ export async function PATCH(
     }
 
     getLogger().error({
-      event: "portal.status_change_failed",
+      event: "portal.update_failed",
       requestId,
       adminId: session.adminId,
       portalId,
@@ -149,7 +170,7 @@ export async function PATCH(
 
     return errorResponse({
       code: "INTERNAL_ERROR",
-      message: "Portal status could not be changed.",
+      message: "Portal could not be updated.",
       requestId,
       status: 500,
     });

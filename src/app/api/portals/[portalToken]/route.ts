@@ -56,9 +56,16 @@ export async function GET(
       status: portal.status,
       expiresAt: portal.expiresAt.toISOString(),
       allowedMimeTypes: portal.allowedMimeTypes,
-      maxFileSizeBytes: portal.maxFileSizeBytes,
+      maxFileSizeBytes: Math.max(
+        portal.maxImageFileSizeBytes,
+        portal.maxVideoFileSizeBytes,
+      ),
+      maxImageBytesPerSubmission: portal.maxImageBytesPerSubmission,
+      maxImageFileSizeBytes: portal.maxImageFileSizeBytes,
       maxFilesPerSubmission: portal.maxFilesPerSubmission,
       maxSubmissionBytes: portal.maxSubmissionBytes,
+      maxVideoBytesPerSubmission: portal.maxVideoBytesPerSubmission,
+      maxVideoFileSizeBytes: portal.maxVideoFileSizeBytes,
     },
     {
       headers: {

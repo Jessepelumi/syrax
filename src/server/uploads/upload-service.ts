@@ -3,8 +3,8 @@ import "server-only";
 import { getEnvironment } from "@/lib/env";
 import { newId } from "@/lib/ids";
 import {
-  isPilotAllowedMimeType,
-  type PilotAllowedMimeType,
+  isAllowedUploadMimeType,
+  type AllowedUploadMimeType,
 } from "@/lib/mime";
 import {
   createDriveUploadSession,
@@ -84,7 +84,7 @@ export interface UploadProgressResult {
 type ResolvedUploadFileContext = Omit<
   UploadFileContext,
   "declaredMimeType"
-> & { declaredMimeType: PilotAllowedMimeType };
+> & { declaredMimeType: AllowedUploadMimeType };
 
 function providerServiceError(error: DurableUploadProviderError): UploadServiceError {
   switch (error.code) {
@@ -155,7 +155,7 @@ async function resolveFileContext(
     throw new UploadServiceError("DESTINATION_UNAVAILABLE");
   }
 
-  if (!isPilotAllowedMimeType(context.declaredMimeType)) {
+  if (!isAllowedUploadMimeType(context.declaredMimeType)) {
     throw new UploadServiceError("UPLOAD_VERIFICATION_FAILED");
   }
 

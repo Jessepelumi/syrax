@@ -20,8 +20,11 @@ interface ErrorEnvelope {
   error?: { message?: string };
 }
 
-function utcDateTimeValue(value: string): string {
-  return new Date(value).toISOString().slice(0, 16);
+function localDateTimeValue(value: string): string {
+  const date = new Date(value);
+  const offsetMilliseconds = date.getTimezoneOffset() * 60_000;
+
+  return new Date(date.getTime() - offsetMilliseconds).toISOString().slice(0, 16);
 }
 
 async function responseError(response: Response): Promise<string> {
@@ -37,7 +40,9 @@ export function PortalManager({
 }: PortalManagerProps) {
   const [portals, setPortals] = useState(initialPortals);
   const [name, setName] = useState("Share your files with me");
-  const [expiresAt, setExpiresAt] = useState(utcDateTimeValue(defaultExpiry));
+  const [expiresAt, setExpiresAt] = useState(localDateTimeValue(defaultExpiry));
+  const [editingExpiryPortalId, setEditingExpiryPortalId] = useState<string>();
+  const [editedExpiry, setEditedExpiry] = useState("");
   const [copyStatus, setCopyStatus] = useState<string>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -53,10 +58,10 @@ export function PortalManager({
     setCopyStatus(undefined);
 
     try {
-      const parsedExpiry = new Date(`${expiresAt}:00.000Z`);
+      const parsedExpiry = new Date(expiresAt);
 
-      if (Number.isNaN(parsedExpiry.getTime())) {
-        setError("Choose a valid expiry time.");
+      if (Number.isNaN(parsedExpiry.getTime()) || parsedExpiry.getTime() <= Date.now()) {
+        setError("Choose a valid expiry time in the future.");
         return;
       }
 
@@ -82,6 +87,59 @@ export function PortalManager({
       ]);
     } catch {
       setError("Portal could not be created. Check the connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function beginExpiryEdit(portal: PortalSummary): void {
+    setError(undefined);
+    setCopyStatus(undefined);
+    setEditingExpiryPortalId(portal.id);
+    setEditedExpiry(localDateTimeValue(portal.expiresAt));
+  }
+
+  async function saveExpiry(
+    event: FormEvent<HTMLFormElement>,
+    portalId: string,
+  ): Promise<void> {
+    event.preventDefault();
+    const parsedExpiry = new Date(editedExpiry);
+
+    if (Number.isNaN(parsedExpiry.getTime()) || parsedExpiry.getTime() <= Date.now()) {
+      setError("Choose a valid expiry time in the future.");
+      return;
+    }
+
+    setBusy(true);
+    setError(undefined);
+    setCopyStatus(undefined);
+
+    try {
+      const response = await fetch(
+        `/api/admin/portals/${encodeURIComponent(portalId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expiresAt: parsedExpiry.toISOString() }),
+        },
+      );
+
+      if (!response.ok) {
+        setError(await responseError(response));
+        return;
+      }
+
+      const result = (await response.json()) as { portal: PortalSummary };
+      setPortals((current) =>
+        current.map((portal) =>
+          portal.id === result.portal.id ? result.portal : portal,
+        ),
+      );
+      setEditingExpiryPortalId(undefined);
+      setEditedExpiry("");
+    } catch {
+      setError("Portal expiry could not be changed. Try again.");
     } finally {
       setBusy(false);
     }
@@ -230,12 +288,12 @@ export function PortalManager({
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-800" htmlFor="portal-expiry">
-                Closes automatically (UTC)
+                Closes automatically (your local time)
               </label>
               <input
                 className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-3 text-slate-950"
                 id="portal-expiry"
-                min={utcDateTimeValue(new Date().toISOString())}
+                min={localDateTimeValue(new Date().toISOString())}
                 onChange={(event) => setExpiresAt(event.target.value)}
                 required
                 type="datetime-local"
@@ -272,18 +330,26 @@ export function PortalManager({
                     {portal.status}
                   </span>
                 </div>
-                {portal.status === "OPEN" ? (
-                  <button
-                    className="mt-4 text-sm font-semibold text-red-700 underline disabled:opacity-60"
-                    disabled={busy}
-                    onClick={() => changeStatus(portal.id, "CLOSED")}
-                    type="button"
-                  >
-                    Close portal
-                  </button>
-                ) : null}
-                {portal.status === "CLOSED" || portal.status === "EXPIRED" ? (
+                {portal.status === "OPEN" || portal.status === "CLOSED" ? (
                   <div className="mt-4 flex flex-wrap gap-4">
+                    <button
+                      className="text-sm font-semibold text-slate-700 underline disabled:opacity-60"
+                      disabled={busy}
+                      onClick={() => beginExpiryEdit(portal)}
+                      type="button"
+                    >
+                      Edit expiry
+                    </button>
+                    {portal.status === "OPEN" ? (
+                      <button
+                        className="text-sm font-semibold text-red-700 underline disabled:opacity-60"
+                        disabled={busy}
+                        onClick={() => changeStatus(portal.id, "CLOSED")}
+                        type="button"
+                      >
+                        Close portal
+                      </button>
+                    ) : null}
                     {portal.status === "CLOSED" ? (
                       <button
                         className="text-sm font-semibold text-emerald-800 underline disabled:opacity-60"
@@ -294,15 +360,69 @@ export function PortalManager({
                         Reopen retained link
                       </button>
                     ) : null}
-                    <button
-                      className="text-sm font-semibold text-red-700 underline disabled:opacity-60"
-                      disabled={busy}
-                      onClick={() => void deletePortal(portal)}
-                      type="button"
-                    >
-                      Delete portal
-                    </button>
+                    {portal.status === "CLOSED" ? (
+                      <button
+                        className="text-sm font-semibold text-red-700 underline disabled:opacity-60"
+                        disabled={busy}
+                        onClick={() => void deletePortal(portal)}
+                        type="button"
+                      >
+                        Delete portal
+                      </button>
+                    ) : null}
                   </div>
+                ) : null}
+                {portal.status === "EXPIRED" ? (
+                  <button
+                    className="mt-4 text-sm font-semibold text-red-700 underline disabled:opacity-60"
+                    disabled={busy}
+                    onClick={() => void deletePortal(portal)}
+                    type="button"
+                  >
+                    Delete portal
+                  </button>
+                ) : null}
+                {editingExpiryPortalId === portal.id ? (
+                  <form
+                    className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4"
+                    onSubmit={(event) => void saveExpiry(event, portal.id)}
+                  >
+                    <label
+                      className="block text-sm font-semibold text-slate-800"
+                      htmlFor={`portal-expiry-${portal.id}`}
+                    >
+                      New expiry (your local time)
+                    </label>
+                    <input
+                      className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-slate-950"
+                      id={`portal-expiry-${portal.id}`}
+                      min={localDateTimeValue(new Date().toISOString())}
+                      onChange={(event) => setEditedExpiry(event.target.value)}
+                      required
+                      type="datetime-local"
+                      value={editedExpiry}
+                    />
+                    <div className="mt-3 flex flex-wrap gap-4">
+                      <button
+                        className="text-sm font-semibold text-emerald-800 underline disabled:opacity-60"
+                        disabled={busy}
+                        type="submit"
+                      >
+                        Save expiry
+                      </button>
+                      <button
+                        className="text-sm font-semibold text-slate-600 underline disabled:opacity-60"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditingExpiryPortalId(undefined);
+                          setEditedExpiry("");
+                        }}
+                        type="button"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
                 ) : null}
               </li>
             ))}

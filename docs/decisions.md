@@ -244,3 +244,31 @@
   exist.
 - **Status:** Temporary bridge. Replace it with the identity and integration architecture in
   `docs/product-roadmap.md`; do not expand it into a permanent authorization system.
+
+## D-025: Separate photo and video upload limits
+
+- **Decision:** Accept `image/jpeg`, `image/png`, `image/heic`, `video/mp4`, and
+  `video/quicktime`. Store separate per-portal limits of 100 MiB for each photo and 2 GiB for each
+  video. Also enforce category budgets of 1.5 GiB of photos and 2 GiB of videos per submission,
+  within a 3.5 GiB combined submission ceiling. Keep the two-file client concurrency limit; do not
+  restrict a submission to one video. Backfill existing portals with the video MIME types and the
+  new per-file and per-category limits.
+- **Reason:** Mobile file requests commonly contain both photos and short videos. A single file-size
+  ceiling either rejects practical iPhone videos or permits unnecessarily large images. Category
+  budgets allow several short videos while bounding the total video transfer, and prevent photos
+  from consuming the capacity reserved for videos. Persisting all limits on the portal keeps
+  validation consistent between the browser, API, and durable record.
+- **Status:** Accepted. This supersedes D-012's image-only allowlist. The old
+  `max_file_size_bytes` column remains temporarily as a compatibility ceiling and can be removed in
+  a later zero-downtime cleanup migration.
+
+## D-026: Editable expiry for unexpired request links
+
+- **Decision:** Let an authenticated owner change the expiry of an `OPEN` or `CLOSED` portal to a
+  future date and time. Display and collect the value in the browser's local time, persist UTC, and
+  write a redacted audit event containing the old and new timestamps. Never revive an `EXPIRED`
+  portal through expiry editing.
+- **Reason:** Hosts need to extend or shorten a live request window without replacing its capability
+  URL. Keeping expiry terminal preserves the existing lifecycle and prevents an old leaked link
+  from becoming active again unexpectedly.
+- **Status:** Accepted with ownership, origin, state, and optimistic-concurrency checks.

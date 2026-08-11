@@ -4,7 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import type { Portal } from "@/db/schema";
 import { getEnvironment } from "@/lib/env";
-import { PILOT_ALLOWED_MIME_TYPES } from "@/lib/mime";
+import { ALLOWED_UPLOAD_MIME_TYPES } from "@/lib/mime";
 import { normalizeDisplayText } from "@/lib/text";
 import {
   createPortalRecordForAdmin,
@@ -17,6 +17,7 @@ import {
   type PortalRecord,
   type PortalProviderRecord,
   transitionPortalRecordForAdmin,
+  updatePortalExpiryRecordForAdmin,
 } from "@/server/portals/portal-repository";
 import {
   assertPortalTransition,
@@ -36,6 +37,7 @@ export type PortalServiceErrorCode =
   | "PORTAL_CLOSED"
   | "PORTAL_EXPIRED"
   | "PORTAL_INVALID"
+  | "PORTAL_NOT_EDITABLE"
   | "PORTAL_NOT_DELETABLE"
   | "PORTAL_NOT_FOUND"
   | "PORTAL_STATE_CONFLICT";
@@ -52,9 +54,12 @@ export interface PublicPortal {
   destinationAvailable: boolean;
   expiresAt: Date;
   id: string;
-  maxFileSizeBytes: number;
+  maxImageBytesPerSubmission: number;
+  maxImageFileSizeBytes: number;
   maxFilesPerSubmission: number;
   maxSubmissionBytes: number;
+  maxVideoBytesPerSubmission: number;
+  maxVideoFileSizeBytes: number;
   name: string;
   status: PortalState;
 }
@@ -74,9 +79,12 @@ function toPublicPortal(record: PortalProviderRecord, status = record.status): P
     status,
     expiresAt: record.expiresAt,
     allowedMimeTypes: record.allowedMimeTypes,
-    maxFileSizeBytes: record.maxFileSizeBytes,
+    maxImageBytesPerSubmission: record.maxImageBytesPerSubmission,
+    maxImageFileSizeBytes: record.maxImageFileSizeBytes,
     maxFilesPerSubmission: record.maxFilesPerSubmission,
     maxSubmissionBytes: record.maxSubmissionBytes,
+    maxVideoBytesPerSubmission: record.maxVideoBytesPerSubmission,
+    maxVideoFileSizeBytes: record.maxVideoFileSizeBytes,
     destinationAvailable:
       record.connectionStatus === "ACTIVE" && record.destinationStatus === "ACTIVE",
   };
@@ -160,7 +168,12 @@ export async function createPortalForAdmin(input: {
   const environment = getEnvironment();
   const name = normalizeDisplayText(input.name, 120);
 
-  if (!name || name.length > 120 || input.expiresAt.getTime() <= Date.now()) {
+  if (
+    !name ||
+    name.length > 120 ||
+    !Number.isFinite(input.expiresAt.getTime()) ||
+    input.expiresAt.getTime() <= Date.now()
+  ) {
     throw new PortalServiceError("PORTAL_INVALID");
   }
 
@@ -174,10 +187,13 @@ export async function createPortalForAdmin(input: {
     expiresAt: input.expiresAt,
     encryptedPublicToken,
     publicTokenHash: generated.publicTokenHash,
-    allowedMimeTypes: [...PILOT_ALLOWED_MIME_TYPES],
-    maxFileSizeBytes: environment.MAX_FILE_SIZE_BYTES,
+    allowedMimeTypes: [...ALLOWED_UPLOAD_MIME_TYPES],
+    maxImageBytesPerSubmission: environment.MAX_IMAGE_BYTES_PER_SUBMISSION,
+    maxImageFileSizeBytes: environment.MAX_IMAGE_FILE_SIZE_BYTES,
     maxFilesPerSubmission: environment.MAX_FILES_PER_SUBMISSION,
     maxSubmissionBytes: environment.MAX_SUBMISSION_BYTES,
+    maxVideoBytesPerSubmission: environment.MAX_VIDEO_BYTES_PER_SUBMISSION,
+    maxVideoFileSizeBytes: environment.MAX_VIDEO_FILE_SIZE_BYTES,
   });
 
   if (result.kind === "destination_unavailable") {
@@ -297,4 +313,51 @@ export async function transitionPortalForAdmin(input: {
   }
 
   throw new PortalServiceError("PORTAL_STATE_CONFLICT");
+}
+
+export async function updatePortalExpiryForAdmin(input: {
+  adminId: string;
+  expiresAt: Date;
+  portalId: string;
+}): Promise<AdminPortal> {
+  if (
+    !Number.isFinite(input.expiresAt.getTime()) ||
+    input.expiresAt.getTime() <= Date.now()
+  ) {
+    throw new PortalServiceError("PORTAL_INVALID");
+  }
+
+  const result = await updatePortalExpiryRecordForAdmin({
+    actorId: input.adminId,
+    expiresAt: input.expiresAt,
+    portalId: input.portalId,
+  });
+
+  if (result.kind === "not_found") {
+    throw new PortalServiceError("PORTAL_NOT_FOUND");
+  }
+
+  if (result.kind === "expired") {
+    throw new PortalServiceError("PORTAL_EXPIRED");
+  }
+
+  if (result.kind === "invalid") {
+    throw new PortalServiceError("PORTAL_INVALID");
+  }
+
+  if (result.kind === "not_editable") {
+    throw new PortalServiceError("PORTAL_NOT_EDITABLE");
+  }
+
+  if (result.kind === "state_conflict") {
+    throw new PortalServiceError("PORTAL_STATE_CONFLICT");
+  }
+
+  const portal = await getPortalForAdmin(input.adminId, input.portalId);
+
+  if (!portal) {
+    throw new PortalServiceError("PORTAL_NOT_FOUND");
+  }
+
+  return toAdminPortal(portal);
 }
